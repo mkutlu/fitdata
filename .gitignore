@@ -1,0 +1,35 @@
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === IntelliJ ===
+.idea/
+*.iml
+out/
+
+# === Java / Maven / Gradle ===
+target/
+*.log
+
+# Maven Wrapper (wrapper scripts kalsın, jar kalsın)
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+!.mvn/wrapper/MavenWrapperDownloader.java
+
+# === Node / Next.js ===
+node_modules/
+.next/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# === Env / Secrets ===
+.env
+.env.*
+*.pem
+*.key
+
+# === Docker / local volumes (genelde compose volume zaten dışarı yazmaz ama yine de) ===
+**/docker-data/

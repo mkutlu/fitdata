@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: fitbit_postgres
+    environment:
+      POSTGRES_DB: fitbit
+      POSTGRES_USER: fitbit
+      POSTGRES_PASSWORD: fitbit
+    ports:
+      - "5432:5432"
+    volumes:
+      - fitbit_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fitbit -d fitbit"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    container_name: fitbit_redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - fitbit_redisdata:/data
+
+volumes:
+  fitbit_pgdata:
+  fitbit_redisdata:
