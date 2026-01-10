@@ -1,4 +1,5 @@
 fitbit:
+  api-base-uri: ${FITBIT_API_BASE_URI:https://api.fitbit.com}
   client-id: ${FITBIT_CLIENT_ID:}
   client-secret: ${FITBIT_CLIENT_SECRET:}
   redirect-uri: ${FITBIT_REDIRECT_URI:http://localhost:8080/oauth/fitbit/callback}

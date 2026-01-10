@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "fitbit")
 public record FitbitProps(
+        String apiBaseUri,
         String clientId,
         String clientSecret,
         String redirectUri,

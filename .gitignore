@@ -33,3 +33,22 @@ pnpm-debug.log*
 
 # === Docker / local volumes (genelde compose volume zaten dışarı yazmaz ama yine de) ===
 **/docker-data/
+
+# ===== Node / Frontend =====
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# ===== Java / Backend =====
+backend/target/
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# ===== IDE =====
+.vscode/
+
