@@ -15,7 +15,7 @@ type FitbitProfileApiResponse = {
 };
 
 export async function fetchProfile(): Promise<UserProfileDto> {
-    const res = await fetch("/api/fitbit/profile");
+    const res = await fetch("/api/profile");
     if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`Failed to load profile: ${res.status} ${text}`);
