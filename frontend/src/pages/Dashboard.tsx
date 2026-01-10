@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StepsChartCard } from "../components/StepsChartCard";
 import { fetchProfile, type UserProfileDto } from "../api/profileApi";
-import fitdataLogo from "../assets/fitdata-logo.png";
 
 export function Dashboard() {
     const [profile, setProfile] = useState<UserProfileDto | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const [selectedDate, setSelectedDate] = useState<string>(() => toIsoDate(new Date()));
+    const readableDate = useMemo(() => formatReadable(selectedDate), [selectedDate]);
 
     useEffect(() => {
         let alive = true;
@@ -36,16 +38,9 @@ export function Dashboard() {
 
             <div className="relative mx-auto w-full max-w-[1520px] px-4 sm:px-6 lg:px-10 py-10">
                 <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-4">
-                        <img
-                            src={fitdataLogo}
-                            alt="Fitdata"
-                            className="h-12 sm:h-14 lg:h-16 drop-shadow-[0_0_18px_rgba(56,189,248,0.35)]"
-                        />
-                        <div className="flex flex-col">
-                            <div className="text-lg sm:text-xl font-semibold tracking-tight">Fitbit</div>
-                            <div className="text-sm text-slate-300">Dashboard (MVP)</div>
-                        </div>
+                    <div>
+                        <h1 className="text-4xl font-semibold tracking-tight">Fitdata</h1>
+                        <p className="mt-2 text-base text-slate-300">Dashboard (MVP)</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -66,13 +61,23 @@ export function Dashboard() {
 
                 {!loading && !error && profile && (
                     <>
-                        <div className="mt-8">
-                            <ProfileCompactBar profile={profile} />
+                        <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center">
+                            <div className="order-2 lg:order-1 lg:col-span-5 xl:col-span-4">
+                                <DateBarCompact
+                                    selectedDate={selectedDate}
+                                    readableDate={readableDate}
+                                    onChange={setSelectedDate}
+                                />
+                            </div>
+
+                            <div className="order-1 lg:order-2 lg:col-span-7 xl:col-span-8">
+                                <ProfileCompactBarCompact profile={profile} />
+                            </div>
                         </div>
 
                         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-start">
                             <div className="lg:col-span-8 xl:col-span-9">
-                                <StepsChartCard />
+                                <StepsChartCard baseDate={selectedDate} />
                             </div>
 
                             <div className="lg:col-span-4 xl:col-span-3 space-y-5">
@@ -88,13 +93,62 @@ export function Dashboard() {
     );
 }
 
-function ProfileCompactBar({ profile }: { profile: UserProfileDto }) {
+function DateBarCompact({
+                            selectedDate,
+                            readableDate,
+                            onChange,
+                        }: {
+    selectedDate: string;
+    readableDate: string;
+    onChange: (next: string) => void;
+}) {
+    const onPrev = () => onChange(addDaysIso(selectedDate, -1));
+    const onNext = () => onChange(addDaysIso(selectedDate, 1));
+
     return (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm backdrop-blur">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 shadow-sm backdrop-blur">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                    <div className="text-xs text-slate-400">Dashboard date</div>
+                    <div className="truncate text-base font-semibold text-slate-100">{readableDate}</div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={onPrev}
+                        className="rounded-xl border border-slate-800 bg-slate-950/35 px-3 py-2 text-sm text-slate-100 hover:bg-slate-950/55"
+                    >
+                        ←
+                    </button>
+
+                    <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => onChange(e.target.value)}
+                        className="rounded-xl border border-slate-800 bg-slate-950/35 px-3 py-2 text-sm text-slate-100 outline-none"
+                    />
+
+                    <button
+                        type="button"
+                        onClick={onNext}
+                        className="rounded-xl border border-slate-800 bg-slate-950/35 px-3 py-2 text-sm text-slate-100 hover:bg-slate-950/55"
+                    >
+                        →
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ProfileCompactBarCompact({ profile }: { profile: UserProfileDto }) {
+    return (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 shadow-sm backdrop-blur">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                     <div className="text-xs text-slate-400">Connected user</div>
-                    <div className="mt-1 truncate text-xl font-semibold text-slate-100">{profile.displayName}</div>
+                    <div className="truncate text-base font-semibold text-slate-100">{profile.displayName}</div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -109,9 +163,9 @@ function ProfileCompactBar({ profile }: { profile: UserProfileDto }) {
 
 function Pill({ label, value }: { label: string; value: string }) {
     return (
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/25 px-3.5 py-2">
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/25 px-3 py-1.5">
             <span className="text-[11px] text-slate-400">{label}</span>
-            <span className="text-sm font-semibold text-slate-100">{value}</span>
+            <span className="text-xs font-semibold text-slate-100">{value}</span>
         </div>
     );
 }
@@ -142,4 +196,22 @@ function PlaceholderCard({ title, subtitle }: { title: string; subtitle: string 
             <div className="mt-2 text-sm text-slate-300">{subtitle}</div>
         </div>
     );
+}
+
+function toIsoDate(d: Date) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function addDaysIso(iso: string, delta: number) {
+    const d = new Date(`${iso}T00:00:00`);
+    d.setDate(d.getDate() + delta);
+    return toIsoDate(d);
+}
+
+function formatReadable(iso: string) {
+    const d = new Date(`${iso}T00:00:00`);
+    return d.toLocaleDateString(undefined, { weekday: "short", year: "numeric", month: "short", day: "2-digit" });
 }

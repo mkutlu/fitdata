@@ -17,7 +17,11 @@ const options: Array<{ value: StepsRange; label: string }> = [
     { value: "LAST_30_DAYS", label: "Last 30 days" },
 ];
 
-export function StepsChartCard() {
+type Props = {
+    baseDate: string;
+};
+
+export function StepsChartCard({ baseDate }: Props) {
     const [range, setRange] = useState<StepsRange>("LAST_7_DAYS");
     const [data, setData] = useState<StepsSeriesDto | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -30,7 +34,7 @@ export function StepsChartCard() {
 
         (async () => {
             try {
-                const d = await fetchSteps(range);
+                const d = await fetchSteps(range, baseDate);
                 if (!alive) return;
                 setData(d);
             } catch (e) {
@@ -44,23 +48,23 @@ export function StepsChartCard() {
         return () => {
             alive = false;
         };
-    }, [range]);
+    }, [range, baseDate]);
 
     const chartData = useMemo(() => {
         return (data?.points ?? []).map((p) => ({
-            date: p.date.slice(5), // MM-DD
+            date: p.date.slice(5),
             steps: p.steps,
         }));
     }, [data]);
 
     return (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 shadow-sm backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
-                <div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm backdrop-blur">
+            <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
                     <div className="text-xs text-slate-400">Steps</div>
-                    <div className="text-base font-semibold text-slate-100">Daily steps</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-100">Daily steps</div>
                     {data && (
-                        <div className="mt-1 text-xs text-slate-400">
+                        <div className="mt-2 text-sm text-slate-300">
                             {data.startDate} → {data.endDate}
                         </div>
                     )}
@@ -69,7 +73,7 @@ export function StepsChartCard() {
                 <select
                     value={range}
                     onChange={(e) => setRange(e.target.value as StepsRange)}
-                    className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-sm text-slate-100 outline-none"
+                    className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-2.5 text-sm text-slate-100 outline-none"
                 >
                     {options.map((o) => (
                         <option key={o.value} value={o.value}>
@@ -79,7 +83,7 @@ export function StepsChartCard() {
                 </select>
             </div>
 
-            <div className="mt-3 h-56">
+            <div className="mt-5 h-64 sm:h-72 lg:h-[420px]">
                 {loading && <div className="text-sm text-slate-300">Loading…</div>}
 
                 {!loading && error && (
@@ -90,7 +94,7 @@ export function StepsChartCard() {
 
                 {!loading && !error && (
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                             <YAxis tick={{ fontSize: 12 }} />
