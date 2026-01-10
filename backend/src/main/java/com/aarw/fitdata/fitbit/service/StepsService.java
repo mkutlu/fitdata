@@ -1,11 +1,11 @@
 package com.aarw.fitdata.fitbit.service;
 
 import com.aarw.fitdata.fitbit.FitbitApiClient;
+import com.aarw.fitdata.fitbit.util.StepsRangeCalculator;
+import com.aarw.fitdata.oauth.token.FitbitTokenService;
 import com.aarw.fitdata.fitbit.dto.FitbitStepsSeriesResponse;
 import com.aarw.fitdata.dto.StepsSeriesDto;
-import com.aarw.fitdata.fitbit.util.StepsRangeCalculator;
 import com.aarw.fitdata.fitbit.util.StepsRange;
-import com.aarw.fitdata.oauth.token.FitbitTokenService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -22,16 +22,15 @@ public class StepsService {
         this.apiClient = apiClient;
     }
 
-    public StepsSeriesDto getSteps(StepsRange range) {
+    public StepsSeriesDto getSteps(StepsRange range, LocalDate baseDate) {
         var token = tokenService.getValidTokenOrThrow();
 
-        LocalDate today = LocalDate.now();
-        LocalDate start = StepsRangeCalculator.startDate(range, today);
+        LocalDate start = StepsRangeCalculator.startDate(range, baseDate);
 
         FitbitStepsSeriesResponse raw = apiClient.getDailyStepsSeries(
                 token,
                 start.toString(),
-                today.toString()
+                baseDate.toString()
         );
 
         List<StepsSeriesDto.Point> points = raw.activitiesSteps().stream()
@@ -41,7 +40,7 @@ public class StepsService {
                 ))
                 .toList();
 
-        return new StepsSeriesDto(range.name(), start, today, points);
+        return new StepsSeriesDto(range.name(), start, baseDate, points);
     }
 
     private int parseSteps(String value) {
