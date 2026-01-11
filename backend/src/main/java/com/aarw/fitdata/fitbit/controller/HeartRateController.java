@@ -1,7 +1,9 @@
 package com.aarw.fitdata.fitbit.controller;
 
 import com.aarw.fitdata.dto.HeartRateDayDto;
+import com.aarw.fitdata.dto.HeartRateIntradayDto;
 import com.aarw.fitdata.dto.HeartRateRangeDto;
+import com.aarw.fitdata.fitbit.service.HeartRateIntradayService;
 import com.aarw.fitdata.fitbit.service.HeartRateService;
 import com.aarw.fitdata.fitbit.util.StepsRange;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -15,9 +17,11 @@ import java.time.LocalDate;
 public class HeartRateController {
 
     private final HeartRateService heartRateService;
+    private final HeartRateIntradayService heartRateIntradayService;
 
-    public HeartRateController(HeartRateService heartRateService) {
+    public HeartRateController(HeartRateService heartRateService, HeartRateIntradayService heartRateIntradayService) {
         this.heartRateService = heartRateService;
+        this.heartRateIntradayService = heartRateIntradayService;
     }
 
     @GetMapping("/api/heartrate")
@@ -35,5 +39,13 @@ public class HeartRateController {
     ) {
         LocalDate effective = baseDate == null ? LocalDate.now() : baseDate;
         return heartRateService.getRange(range, effective);
+    }
+
+    @GetMapping("/api/heartrate/intraday")
+    public HeartRateIntradayDto intraday(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
+    ) {
+        LocalDate effective = baseDate == null ? LocalDate.now() : baseDate;
+        return heartRateIntradayService.get(effective);
     }
 }

@@ -25,7 +25,6 @@ public record FitbitHeartDailyRangeResponse(
             String name,
             Integer min,
             Integer max,
-            Integer minutes,
-            Integer caloriesOut
+            Integer minutes
     ) {}
 }

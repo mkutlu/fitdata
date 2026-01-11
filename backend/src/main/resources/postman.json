@@ -1,0 +1,131 @@
+{
+  "info": {
+    "_postman_id": "c7f24a2d-3f41-4c6c-a4c3-9b2b8d0c2d2a",
+    "name": "Fitdata API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Fitdata backend endpoints (profile, steps, heart rate day + range, OAuth start). Uses variables for baseUrl/baseDate/range."
+  },
+  "item": [
+    {
+      "name": "Auth (Fitbit)",
+      "item": [
+        {
+          "name": "OAuth Start (open in browser)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oauth/fitbit/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["oauth", "fitbit", "start"]
+            },
+            "description": "This endpoint redirects to Fitbit authorize page. Best used by opening in browser. In Postman, redirects may not preserve session/cookies depending on settings."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get Profile (dashboard contract)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Steps",
+      "item": [
+        {
+          "name": "Get Steps (range + baseDate)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/steps?range={{range}}&baseDate={{baseDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "steps"],
+              "query": [
+                { "key": "range", "value": "{{range}}" },
+                { "key": "baseDate", "value": "{{baseDate}}" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Heart Rate",
+      "item": [
+        {
+          "name": "Get Heart Rate (day summary)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/heartrate?baseDate={{baseDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "heartrate"],
+              "query": [
+                { "key": "baseDate", "value": "{{baseDate}}" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Heart Rate (range summary)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/heartrate/range?range={{range}}&baseDate={{baseDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "heartrate", "range"],
+              "query": [
+                { "key": "range", "value": "{{range}}" },
+                { "key": "baseDate", "value": "{{baseDate}}" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Optional: ensure baseDate exists; set to today (local) if empty.",
+          "const baseDate = pm.collectionVariables.get('baseDate');",
+          "if (!baseDate) {",
+          "  const d = new Date();",
+          "  const yyyy = d.getFullYear();",
+          "  const mm = String(d.getMonth() + 1).padStart(2, '0');",
+          "  const dd = String(d.getDate()).padStart(2, '0');",
+          "  pm.collectionVariables.set('baseDate', `${yyyy}-${mm}-${dd}`);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "baseDate", "value": "2026-01-09", "type": "string" },
+    { "key": "range", "value": "LAST_7_DAYS", "type": "string" }
+  ]
+}
