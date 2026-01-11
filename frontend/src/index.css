@@ -1,6 +1,25 @@
+@import 'react-grid-layout/css/styles.css';
+@import 'react-resizable/css/styles.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.react-grid-placeholder {
+    background: rgba(56, 189, 248, 0.1) !important;
+    border-radius: 1rem !important;
+    opacity: 0.5 !important;
+}
+
+.react-resizable-handle {
+    padding: 5px;
+}
+
+.react-resizable-handle::after {
+    width: 8px !important;
+    height: 8px !important;
+    border-right: 2px solid rgba(148, 163, 184, 0.5) !important;
+    border-bottom: 2px solid rgba(148, 163, 184, 0.5) !important;
+}
 
 html, body, #root {
   height: 100%;

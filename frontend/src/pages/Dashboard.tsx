@@ -1,6 +1,81 @@
 import { useEffect, useMemo, useState } from "react";
+import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
+import type { Layout } from "react-grid-layout";
 import { StepsChartCard } from "../components/StepsChartCard";
+import { HeartRateIntradayCard } from "../components/HeartRateIntradayCard";
 import { fetchProfile, type UserProfileDto } from "../api/profileApi";
+import type { StepsRange } from "../api/stepsApi";
+
+const LAYOUT_STORAGE_KEY = "fitdata-dashboard-layout";
+
+const defaultLayouts: { [P: string]: Layout } = {
+    lg: [
+        { i: "steps", x: 0, y: 0, w: 9, h: 10 },
+        { i: "heart", x: 0, y: 10, w: 9, h: 10 },
+        { i: "user", x: 9, y: 0, w: 3, h: 3 },
+        { i: "gender", x: 9, y: 3, w: 3, h: 3 },
+        { i: "anchor", x: 9, y: 6, w: 3, h: 3 },
+    ],
+    md: [
+        { i: "steps", x: 0, y: 0, w: 8, h: 10 },
+        { i: "heart", x: 0, y: 10, w: 8, h: 10 },
+        { i: "user", x: 8, y: 0, w: 4, h: 3 },
+        { i: "gender", x: 8, y: 3, w: 4, h: 3 },
+        { i: "anchor", x: 8, y: 6, w: 4, h: 3 },
+    ],
+    sm: [
+        { i: "steps", x: 0, y: 0, w: 6, h: 10 },
+        { i: "heart", x: 0, y: 10, w: 6, h: 10 },
+        { i: "user", x: 0, y: 20, w: 6, h: 3 },
+        { i: "gender", x: 0, y: 23, w: 6, h: 3 },
+        { i: "anchor", x: 0, y: 26, w: 6, h: 3 },
+    ],
+};
+
+function DashboardContent({selectedDate, range, setRange, layouts, onLayoutChange }: any) {
+    const { containerRef, width } = useContainerWidth();
+
+    return (
+        <div ref={containerRef} className="mt-6">
+            {width > 0 && (
+                <ResponsiveGridLayout
+                    className="layout"
+                    layouts={layouts}
+                    width={width}
+                    breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+                    cols={{ lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 }}
+                    rowHeight={30}
+                    dragConfig={{
+                        handle: ".drag-handle",
+                        cancel: ".no-drag"
+                    }}
+                    onLayoutChange={onLayoutChange}
+                >
+                    <div key="steps">
+                        <div className="h-full w-full flex flex-col">
+                            <div className="drag-handle h-6 w-full cursor-move bg-slate-800/20 hover:bg-slate-800/40 rounded-t-2xl flex items-center justify-center">
+                                <div className="w-8 h-1 bg-slate-700 rounded-full" />
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <StepsChartCard baseDate={selectedDate} range={range} onRangeChange={setRange} />
+                            </div>
+                        </div>
+                    </div>
+                    <div key="heart">
+                        <div className="h-full w-full flex flex-col">
+                            <div className="drag-handle h-6 w-full cursor-move bg-slate-800/20 hover:bg-slate-800/40 rounded-t-2xl flex items-center justify-center">
+                                <div className="w-8 h-1 bg-slate-700 rounded-full" />
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <HeartRateIntradayCard baseDate={selectedDate} />
+                            </div>
+                        </div>
+                    </div>
+                </ResponsiveGridLayout>
+            )}
+        </div>
+    );
+}
 
 export function Dashboard() {
     const [profile, setProfile] = useState<UserProfileDto | null>(null);
@@ -9,6 +84,18 @@ export function Dashboard() {
 
     const [selectedDate, setSelectedDate] = useState<string>(() => toIsoDate(new Date()));
     const readableDate = useMemo(() => formatReadable(selectedDate), [selectedDate]);
+
+    const [range, setRange] = useState<StepsRange>("LAST_7_DAYS");
+
+    const [layouts, setLayouts] = useState(() => {
+        const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
+        return saved ? JSON.parse(saved) : defaultLayouts;
+    });
+
+    const onLayoutChange = (_currentLayout: any, allLayouts: any) => {
+        setLayouts(allLayouts);
+        localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(allLayouts));
+    };
 
     useEffect(() => {
         let alive = true;
@@ -63,11 +150,7 @@ export function Dashboard() {
                     <>
                         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center">
                             <div className="order-2 lg:order-1 lg:col-span-5 xl:col-span-4">
-                                <DateBarCompact
-                                    selectedDate={selectedDate}
-                                    readableDate={readableDate}
-                                    onChange={setSelectedDate}
-                                />
+                                <DateBarCompact selectedDate={selectedDate} readableDate={readableDate} onChange={setSelectedDate} />
                             </div>
 
                             <div className="order-1 lg:order-2 lg:col-span-7 xl:col-span-8">
@@ -75,17 +158,13 @@ export function Dashboard() {
                             </div>
                         </div>
 
-                        <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-start">
-                            <div className="lg:col-span-8 xl:col-span-9">
-                                <StepsChartCard baseDate={selectedDate} />
-                            </div>
-
-                            <div className="lg:col-span-4 xl:col-span-3 space-y-5">
-                                <MiniStatCard title="User" value={profile.displayName} subtitle={`ID ${profile.id}`} />
-                                <MiniStatCard title="Gender" value={profile.gender} subtitle={`Age ${profile.age}`} />
-                                <PlaceholderCard title="Next" subtitle="Sleep / HR / Calories cards will live here" />
-                            </div>
-                        </div>
+                        <DashboardContent
+                            selectedDate={selectedDate}
+                            range={range}
+                            setRange={setRange}
+                            layouts={layouts}
+                            onLayoutChange={onLayoutChange}
+                        />
                     </>
                 )}
             </div>
@@ -175,25 +254,6 @@ function HeaderChip({ label, value }: { label: string; value: string }) {
         <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/30 px-3.5 py-2">
             <span className="text-[11px] text-slate-400">{label}</span>
             <span className="text-sm font-semibold text-slate-100">{value}</span>
-        </div>
-    );
-}
-
-function MiniStatCard({ title, value, subtitle }: { title: string; value: string; subtitle?: string }) {
-    return (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow-sm backdrop-blur">
-            <div className="text-xs text-slate-400">{title}</div>
-            <div className="mt-2 truncate text-lg font-semibold text-slate-100">{value}</div>
-            {subtitle && <div className="mt-1 text-sm text-slate-300">{subtitle}</div>}
-        </div>
-    );
-}
-
-function PlaceholderCard({ title, subtitle }: { title: string; subtitle: string }) {
-    return (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/20 p-5 shadow-sm backdrop-blur">
-            <div className="text-xs text-slate-400">{title}</div>
-            <div className="mt-2 text-sm text-slate-300">{subtitle}</div>
         </div>
     );
 }

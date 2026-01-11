@@ -19,10 +19,11 @@ const options: Array<{ value: StepsRange; label: string }> = [
 
 type Props = {
     baseDate: string;
+    range: StepsRange;
+    onRangeChange: (next: StepsRange) => void;
 };
 
-export function StepsChartCard({ baseDate }: Props) {
-    const [range, setRange] = useState<StepsRange>("LAST_7_DAYS");
+export function StepsChartCard({ baseDate, range, onRangeChange }: Props) {
     const [data, setData] = useState<StepsSeriesDto | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -58,7 +59,7 @@ export function StepsChartCard({ baseDate }: Props) {
     }, [data]);
 
     return (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm backdrop-blur">
+        <div className="h-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm backdrop-blur">
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                     <div className="text-xs text-slate-400">Steps</div>
@@ -72,7 +73,7 @@ export function StepsChartCard({ baseDate }: Props) {
 
                 <select
                     value={range}
-                    onChange={(e) => setRange(e.target.value as StepsRange)}
+                    onChange={(e) => onRangeChange(e.target.value as StepsRange)}
                     className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-2.5 text-sm text-slate-100 outline-none"
                 >
                     {options.map((o) => (
@@ -83,7 +84,7 @@ export function StepsChartCard({ baseDate }: Props) {
                 </select>
             </div>
 
-            <div className="mt-5 h-64 sm:h-72 lg:h-[420px]">
+            <div className="mt-5 flex-1 min-h-0">
                 {loading && <div className="text-sm text-slate-300">Loading…</div>}
 
                 {!loading && error && (
@@ -93,15 +94,17 @@ export function StepsChartCard({ baseDate }: Props) {
                 )}
 
                 {!loading && !error && (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                            <YAxis tick={{ fontSize: 12 }} />
-                            <Tooltip />
-                            <Line type="monotone" dataKey="steps" strokeWidth={2} dot={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
+                    <div className="w-full h-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                                <YAxis tick={{ fontSize: 12 }} />
+                                <Tooltip />
+                                <Line type="monotone" dataKey="steps" stroke="#38bdf8" strokeWidth={2} dot={false} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
                 )}
             </div>
         </div>
