@@ -40,9 +40,16 @@ public class FitbitOAuthController {
     }
 
     @GetMapping("/oauth/fitbit/start")
-    public ResponseEntity<Void> start(HttpSession session) {
+    public ResponseEntity<Void> start(
+            @org.springframework.web.bind.annotation.RequestHeader(value = "Referer", required = false) String referer,
+            HttpSession session
+    ) {
         if (props.clientId() == null || props.clientId().isBlank()) {
             return ResponseEntity.status(500).build();
+        }
+
+        if (referer != null && !referer.contains("/oauth/fitbit/start")) {
+            session.setAttribute("oauth_origin", referer);
         }
 
         String state = UUID.randomUUID().toString();
@@ -52,7 +59,10 @@ public class FitbitOAuthController {
         session.setAttribute(SESSION_STATE, state);
         session.setAttribute(SESSION_VERIFIER, verifier);
 
-        String scopeParam = props.scope() == null ? "" : props.scope().trim().replace(" ", "+");
+        String scopeParam = props.scope() == null ? "" : props.scope().trim();
+        if (scopeParam.contains(" ")) {
+            scopeParam = scopeParam.replace(" ", "+");
+        }
 
         String url = UriComponentsBuilder
                 .fromUriString(props.authorizeUri())
@@ -70,58 +80,68 @@ public class FitbitOAuthController {
         return ResponseEntity.status(302).header(HttpHeaders.LOCATION, url).build();
     }
 
+    @GetMapping("/oauth/fitbit/status")
+    public ResponseEntity<AuthStatusResponse> status() {
+        boolean authenticated = tokenRepository.count() > 0;
+        return ResponseEntity.ok(new AuthStatusResponse(authenticated));
+    }
+
+    @GetMapping("/oauth/fitbit/logout")
+    public ResponseEntity<Void> logout(HttpSession session) {
+        tokenRepository.deleteAll();
+        session.invalidate();
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/oauth/fitbit/callback")
-    public ResponseEntity<OAuthConnectResponse> callback(
-            String code,
-            String state,
-            String error,
+    public ResponseEntity<Void> callback(
+            @org.springframework.web.bind.annotation.RequestParam String code,
+            @org.springframework.web.bind.annotation.RequestParam String state,
             HttpSession session
     ) {
-        if (error != null && !error.isBlank()) {
-            log.warn("Fitbit OAuth error={}", error);
-            return ResponseEntity
-                    .badRequest()
-                    .body(new OAuthConnectResponse(false, error));
-        }
-
-        String expectedState = (String) session.getAttribute(SESSION_STATE);
+        String savedState = (String) session.getAttribute(SESSION_STATE);
         String verifier = (String) session.getAttribute(SESSION_VERIFIER);
 
-        if (expectedState == null || verifier == null) {
-            log.warn("OAuth session missing state/verifier");
-            return ResponseEntity.badRequest().body(new OAuthConnectResponse(false, "session_missing"));
-        }
-        if (!expectedState.equals(state)) {
-            log.warn("State mismatch expected={}, got={}", expectedState, state);
-            return ResponseEntity.badRequest().body(new OAuthConnectResponse(false, "state_mismatch"));
-        }
-        if (code == null || code.isBlank()) {
-            log.warn("Missing authorization code");
-            return ResponseEntity.badRequest().body(new OAuthConnectResponse(false, "code_missing"));
+        if (savedState == null || !savedState.equals(state) || verifier == null) {
+            log.error("OAuth callback state mismatch or missing verifier");
+            return ResponseEntity.status(400).build();
         }
 
-        session.removeAttribute(SESSION_STATE);
-        session.removeAttribute(SESSION_VERIFIER);
+        try {
+            FitbitTokenResponse resp = exchangeCodeForToken(code, verifier);
 
-        FitbitTokenResponse token = exchangeCodeForToken(code, verifier);
+            FitbitTokenEntity entity = tokenRepository.findByFitbitUserId(resp.userId())
+                    .orElse(new FitbitTokenEntity());
 
-        FitbitTokenEntity entity = tokenRepository.findByFitbitUserId(token.userId())
-                .orElseGet(FitbitTokenEntity::new);
+            entity.setFitbitUserId(resp.userId());
+            entity.setAccessToken(resp.accessToken());
+            entity.setRefreshToken(resp.refreshToken());
+            entity.setTokenType(resp.tokenType());
+            entity.setScope(resp.scope());
+            entity.setExpiresAt(resp.expiresAt());
 
-        entity.setFitbitUserId(token.userId());
-        entity.setAccessToken(token.accessToken());
-        entity.setRefreshToken(token.refreshToken());
-        entity.setTokenType(token.tokenType());
-        entity.setScope(token.scope());
-        entity.setExpiresAt(token.expiresAt());
+            tokenRepository.save(entity);
 
-        tokenRepository.save(entity);
-
-        log.info("Saved Fitbit token for user_id={} expires_at={}", token.userId(), entity.getExpiresAt());
-
-        return ResponseEntity.ok(new OAuthConnectResponse(true, "Fitbit connected successfully"));
-
+            log.info("Fitbit OAuth successful for user={}", resp.userId());
+            
+            // Redirect to frontend
+            String target = "/";
+            if (session.getAttribute("oauth_origin") != null) {
+                target = (String) session.getAttribute("oauth_origin");
+                // Remove potential hash fragments like #_=_ added by some providers
+                if (target.contains("#")) {
+                    target = target.substring(0, target.indexOf("#"));
+                }
+            }
+            
+            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, target).build();
+        } catch (Exception e) {
+            log.error("OAuth exchange failed", e);
+            return ResponseEntity.status(500).build();
+        }
     }
+
+    public record AuthStatusResponse(boolean authenticated) {}
 
     private FitbitTokenResponse exchangeCodeForToken(String code, String verifier) {
         String auth = Base64.getEncoder().encodeToString(

@@ -5,7 +5,7 @@ fitbit:
   redirect-uri: ${FITBIT_REDIRECT_URI:http://localhost:8080/oauth/fitbit/callback}
   authorize-uri: ${FITBIT_AUTHORIZE_URI:https://www.fitbit.com/oauth2/authorize}
   token-uri: ${FITBIT_TOKEN_URI:https://api.fitbit.com/oauth2/token}
-  scope: ${FITBIT_SCOPE:activity heartrate profile sleep}
+  scope: ${FITBIT_SCOPE:activity heartrate profile sleep weight}
 spring:
   application:
     name: fitdata

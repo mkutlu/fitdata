@@ -101,4 +101,44 @@ public class FitbitApiClient {
                 .block();
     }
 
+    public FitbitWeightResponse getWeightSeries(FitbitTokenEntity token, String startDate, String endDate) {
+        String url = props.apiBaseUri() + "/1/user/-/body/log/weight/date/" + startDate + "/" + endDate + ".json";
+        try {
+            return webClient.get()
+                    .uri(url)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token.getAccessToken())
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, resp ->
+                            resp.bodyToMono(String.class).defaultIfEmpty("")
+                                    .map(body -> new RuntimeException("Fitbit Weight API error: HTTP " + resp.statusCode() + " body=" + body))
+                    )
+                    .bodyToMono(FitbitWeightResponse.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            throw new RuntimeException("Fitbit Weight call failed: HTTP " + e.getStatusCode() + " body=" + e.getResponseBodyAsString(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Fitbit Weight call failed: " + url, e);
+        }
+    }
+
+    public FitbitSleepResponse getSleep(FitbitTokenEntity token, String date) {
+        String url = props.apiBaseUri() + "/1.2/user/-/sleep/date/" + date + ".json";
+        try {
+            return webClient.get()
+                    .uri(url)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token.getAccessToken())
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, resp ->
+                            resp.bodyToMono(String.class).defaultIfEmpty("")
+                                    .map(body -> new RuntimeException("Fitbit Sleep API error: HTTP " + resp.statusCode() + " body=" + body))
+                    )
+                    .bodyToMono(FitbitSleepResponse.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            throw new RuntimeException("Fitbit Sleep call failed: HTTP " + e.getStatusCode() + " body=" + e.getResponseBodyAsString(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Fitbit Sleep call failed: " + url, e);
+        }
+    }
+
 }
