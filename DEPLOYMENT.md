@@ -34,6 +34,7 @@ Each service (Backend and Frontend) requires specific environment variables. You
 1. Click **"New"** -> **"GitHub Repo"** -> Select your repo.
 2. Go to the service **Settings**:
    - **Dockerfiles**: Railway should detect `backend/Dockerfile`. If not, specify it.
+   - **Start Command**: Leave empty. Railway will use the `ENTRYPOINT` defined in the `Dockerfile`.
    - **Public Networking**: Enable it to get a public URL (e.g., `https://backend-production.up.railway.app`).
 3. Go to the service **Variables**:
    - Ensure the variables from Step 3 are set.
@@ -42,6 +43,7 @@ Each service (Backend and Frontend) requires specific environment variables. You
 1. Click **"New"** -> **"GitHub Repo"** -> Select your repo again.
 2. Go to the service **Settings**:
    - **Dockerfiles**: Railway should detect `frontend/Dockerfile`. If not, specify it.
+   - **Start Command**: Leave empty. Railway will use the `CMD` defined in the `Dockerfile`.
    - **Public Networking**: Enable it.
 3. Go to the service **Variables**:
    - `BACKEND_URL`: `http://backend.railway.internal:8080` (Railway's internal networking for the backend service).
