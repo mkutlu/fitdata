@@ -1,6 +1,9 @@
 server {
     listen 80;
 
+    # Railway uses Docker internal DNS at 127.0.0.11
+    resolver 127.0.0.11 valid=30s;
+
     location / {
         root /usr/share/nginx/html;
         index index.html index.htm;
@@ -8,9 +11,9 @@ server {
     }
 
     # Proxy API requests to the backend service
-    # Railway sets internal hostnames, we'll use an environment variable or a known service name
     location /api {
-        proxy_pass ${BACKEND_URL};
+        set $backend ${BACKEND_URL};
+        proxy_pass $backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -18,7 +21,8 @@ server {
     }
 
     location /oauth {
-        proxy_pass ${BACKEND_URL};
+        set $backend ${BACKEND_URL};
+        proxy_pass $backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
