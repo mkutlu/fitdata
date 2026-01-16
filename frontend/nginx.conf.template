@@ -25,15 +25,7 @@ server {
 
     # Proxy API requests to the backend service
     location /api {
-        set $backend_url ${BACKEND_URL};
-        
-        if ($backend_url ~* ^(.+)/$) {
-            set $backend_url $1;
-        }
-
-        # Explicitly pass the URI to the backend when using variables
-        proxy_pass $backend_url$request_uri;
-        
+        proxy_pass ${BACKEND_URL};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -42,25 +34,16 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         
-        # Increased buffers and timeouts to prevent 499/504
         proxy_buffer_size 128k;
         proxy_buffers 4 256k;
         proxy_busy_buffers_size 256k;
         proxy_connect_timeout 300s;
         proxy_send_timeout 300s;
         proxy_read_timeout 300s;
-        proxy_ignore_client_abort on;
     }
 
     location /oauth {
-        set $backend_url ${BACKEND_URL};
-
-        if ($backend_url ~* ^(.+)/$) {
-            set $backend_url $1;
-        }
-
-        proxy_pass $backend_url$request_uri;
-        
+        proxy_pass ${BACKEND_URL};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -68,13 +51,12 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         proxy_buffer_size 128k;
         proxy_buffers 4 256k;
         proxy_busy_buffers_size 256k;
         proxy_connect_timeout 300s;
         proxy_send_timeout 300s;
         proxy_read_timeout 300s;
-        proxy_ignore_client_abort on;
     }
 }
