@@ -29,4 +29,4 @@ server:
         http-only: true
         secure: true
         same-site: lax
-  forward-headers-strategy: native
+  forward-headers-strategy: framework
