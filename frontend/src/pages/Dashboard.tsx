@@ -14,7 +14,7 @@ import logo from "../assets/fitdata-logo.png";
 
 const LAYOUT_STORAGE_KEY = "fitdata-dashboard-layout";
 
-const defaultLayouts: { [P: string]: Layout[] } = {
+const defaultLayouts: any = {
     lg: [
         { i: "readiness", x: 0, y: 0, w: 12, h: 8 },
         { i: "steps", x: 0, y: 8, w: 6, h: 12 },
@@ -59,7 +59,6 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
                     breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
                     cols={{ lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 }}
                     rowHeight={30}
-                    draggableHandle=".drag-handle"
                     onLayoutChange={onLayoutChange}
                 >
                     <div key="readiness">
@@ -184,12 +183,13 @@ export function Dashboard() {
                     // Reset layouts when not authenticated to ensure clean state on next login
                     setLayouts(JSON.parse(JSON.stringify(defaultLayouts)));
                 }
-            } catch (e) {
+            } catch (err) {
                 if (!alive) return;
-                console.error("Auth/Profile fetch failed", e);
+                console.error("Auth/Profile fetch failed", err);
+                const errorMessage = err instanceof Error ? err.message : String(err);
                 // Don't show technical error if it's just a missing token
-                if (!e.message.includes("401") && !e.message.includes("No Fitbit token")) {
-                    setError(e instanceof Error ? e.message : "Unknown error");
+                if (!errorMessage.includes("401") && !errorMessage.includes("No Fitbit token")) {
+                    setError(errorMessage);
                 }
             } finally {
                 setLoading(false);
