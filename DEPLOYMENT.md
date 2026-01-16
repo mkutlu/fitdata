@@ -45,6 +45,17 @@ Each service (Backend and Frontend) requires specific environment variables. You
    - **Public Networking**: Enable it.
 3. Go to the service **Variables**:
    - `BACKEND_URL`: `http://backend.railway.internal:8080` (Railway's internal networking for the backend service).
+   - **Note**: Ensure the backend service has a domain/public URL if you are using it for `FITBIT_REDIRECT_URI`.
+
+#### Troubleshooting 502 Errors
+
+If you see a 502 Bad Gateway error on the frontend:
+1. **Check Backend Status**: Ensure the backend service is running and healthy. Check its logs for any startup errors (e.g., database connection issues).
+2. **Verify `BACKEND_URL`**: Double-check that the `BACKEND_URL` in the Frontend service exactly matches the internal URL of your backend. It should be `http://<backend-service-name>.railway.internal:8080`.
+3. **Internal DNS**: Railway sometimes takes a moment to propagate internal DNS. If the backend was just deployed, wait a minute and refresh.
+4. **Port Mapping**: Ensure your backend is listening on the port specified in `BACKEND_URL` (default is 8080).
+5. **Private Network**: Ensure both services are in the same Railway project to use internal networking.
+6. **Health Check**: You can verify if the frontend container is healthy by checking the `/health` endpoint on its domain.
 
 #### Step 6: Update Fitbit Application Settings
 1. Go to the [Fitbit Developer Portal](https://dev.fitbit.com/apps).
