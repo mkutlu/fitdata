@@ -46,18 +46,13 @@ export function ReadinessCard({ baseDate }: Props) {
 
     const {
         readinessScore,
-        cardioLoadScore,
-        cardioLoadTargetMin,
-        cardioLoadTargetMax,
         readinessStatus,
-        cardioLoadStatus,
-        vo2Max
+        vo2Max,
+        exerciseDays
     } = data;
 
     const rScore = readinessScore ?? 0;
-    const cScore = cardioLoadScore ?? 0;
-    const tMin = cardioLoadTargetMin ?? 0;
-    const tMax = cardioLoadTargetMax ?? 100;
+    const exDays = exerciseDays ?? 0;
 
     // SVG Geometry
     const size = 260;
@@ -66,7 +61,6 @@ export function ReadinessCard({ baseDate }: Props) {
     const center = size / 2;
     
     // Circumference and segment lengths
-    // We want two semi-circles with a small gap
     const semiCircumference = Math.PI * radius;
     const gap = 8; // degrees
     const gapRad = (gap * Math.PI) / 180;
@@ -77,42 +71,41 @@ export function ReadinessCard({ baseDate }: Props) {
     const rArcLength = semiCircumference - (gapRad * radius);
     const rOffset = rArcLength - (Math.min(rScore, 100) / 100) * rArcLength;
 
-    // Cardio Load (Bottom)
+    // Exercise Days (Bottom)
     const cStartAngle = gapRad/2;
     const cEndAngle = Math.PI - gapRad/2;
     const cArcLength = semiCircumference - (gapRad * radius);
     
-    // Scale for Cardio Load
-    const cMaxScale = Math.max(cScore, tMax, 10) * 1.1;
-    const cOffset = cArcLength - (Math.min(cScore, cMaxScale) / cMaxScale) * cArcLength;
+    // Scale for Exercise Days (0 to 7)
+    const cOffset = cArcLength - (Math.min(exDays, 7) / 7) * cArcLength;
 
-    // Target range for Cardio Load
-    const targetStartOffset = cArcLength - (tMin / cMaxScale) * cArcLength;
-    const targetEndOffset = cArcLength - (tMax / cMaxScale) * cArcLength;
-
-    const describeArc = (x: number, y: number, r: number, startAngle: number, endAngle: number) => {
+    const describeArc = (x: number, y: number, r: number, startAngle: number, endAngle: number, reverse: boolean = false) => {
         const start = {
-            x: x + r * Math.cos(endAngle),
-            y: y + r * Math.sin(endAngle)
+            x: x + r * Math.cos(reverse ? startAngle : endAngle),
+            y: y + r * Math.sin(reverse ? startAngle : endAngle)
         };
         const end = {
-            x: x + r * Math.cos(startAngle),
-            y: y + r * Math.sin(startAngle)
+            x: x + r * Math.cos(reverse ? endAngle : startAngle),
+            y: y + r * Math.sin(reverse ? endAngle : startAngle)
         };
-        const largeArcFlag = endAngle - startAngle <= Math.PI ? "0" : "1";
+        const sweepFlag = reverse ? "1" : "0";
+        const largeArcFlag = Math.abs(endAngle - startAngle) <= Math.PI ? "0" : "1";
         return [
             "M", start.x, start.y,
-            "A", r, r, 0, largeArcFlag, 0, end.x, end.y
+            "A", r, r, 0, largeArcFlag, sweepFlag, end.x, end.y
         ].join(" ");
     };
 
     return (
-        <div className="bg-gray-900/40 border border-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-center relative overflow-hidden group">
-            <div className="relative" style={{ width: size, height: size }}>
-                <svg width={size} height={size} className="transform rotate-0">
+        <div className="bg-gray-900/40 border border-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-center relative overflow-hidden group h-full w-full">
+            <div className="relative w-full h-full max-w-full max-h-full aspect-square flex items-center justify-center">
+                <svg 
+                    viewBox={`0 0 ${size} ${size}`}
+                    className="w-full h-full max-w-[400px] max-h-[400px] transition-all duration-300"
+                >
                     {/* Readiness Background (Top) */}
                     <path
-                        d={describeArc(center, center, radius, rStartAngle, rEndAngle)}
+                        d={describeArc(center, center, radius, rStartAngle, rEndAngle, true)}
                         fill="none"
                         stroke="#1f2937"
                         strokeWidth={strokeWidth}
@@ -120,7 +113,7 @@ export function ReadinessCard({ baseDate }: Props) {
                     />
                     {/* Readiness Progress (Top) */}
                     <path
-                        d={describeArc(center, center, radius, rStartAngle, rEndAngle)}
+                        d={describeArc(center, center, radius, rStartAngle, rEndAngle, true)}
                         fill="none"
                         stroke="#10b981"
                         strokeWidth={strokeWidth}
@@ -130,7 +123,7 @@ export function ReadinessCard({ baseDate }: Props) {
                         className="transition-all duration-1000 ease-out"
                     />
 
-                    {/* Cardio Load Background (Bottom) */}
+                    {/* Exercise Days Background (Bottom) */}
                     <path
                         d={describeArc(center, center, radius, cStartAngle, cEndAngle)}
                         fill="none"
@@ -139,18 +132,7 @@ export function ReadinessCard({ baseDate }: Props) {
                         strokeLinecap="round"
                     />
                     
-                    {/* Cardio Load Target Range */}
-                    <path
-                        d={describeArc(center, center, radius, cStartAngle, cEndAngle)}
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth={strokeWidth + 4}
-                        strokeDasharray={`${targetStartOffset - targetEndOffset} ${cArcLength}`}
-                        strokeDashoffset={targetStartOffset}
-                        className="opacity-20"
-                    />
-
-                    {/* Cardio Load Progress (Bottom) */}
+                    {/* Exercise Days Progress (Bottom) */}
                     <path
                         d={describeArc(center, center, radius, cStartAngle, cEndAngle)}
                         fill="none"
@@ -161,54 +143,35 @@ export function ReadinessCard({ baseDate }: Props) {
                         strokeLinecap="round"
                         className="transition-all duration-1000 ease-out"
                     />
-                    
-                    {/* Target Markers */}
-                    <path
-                        d={describeArc(center, center, radius, cStartAngle, cEndAngle)}
-                        fill="none"
-                        stroke="white"
-                        strokeWidth={strokeWidth + 4}
-                        strokeDasharray={`2 ${cArcLength}`}
-                        strokeDashoffset={targetStartOffset}
-                        className="opacity-50"
-                    />
-                    <path
-                        d={describeArc(center, center, radius, cStartAngle, cEndAngle)}
-                        fill="none"
-                        stroke="white"
-                        strokeWidth={strokeWidth + 4}
-                        strokeDasharray={`2 ${cArcLength}`}
-                        strokeDashoffset={targetEndOffset}
-                        className="opacity-50"
-                    />
                 </svg>
 
                 {/* Center Content */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <div className="mb-4">
-                        <span className="block text-xs text-gray-400 uppercase tracking-widest font-semibold mb-1">Readiness</span>
-                        <div className="flex items-center justify-center">
-                            <span className="text-4xl font-black text-white leading-none">{rScore}</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                    <div className="flex flex-col items-center scale-[0.8] sm:scale-100 transition-transform">
+                        <div className="mb-2">
+                            <span className="block text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest font-semibold mb-1">Readiness</span>
+                            <div className="flex items-center justify-center">
+                                <span className="text-2xl sm:text-4xl font-black text-white leading-none">{rScore}</span>
+                            </div>
+                            <span className="block text-[8px] sm:text-[10px] text-emerald-400 font-medium mt-1">{readinessStatus || "N/A"}</span>
                         </div>
-                        <span className="block text-[10px] text-emerald-400 font-medium mt-1">{readinessStatus || "N/A"}</span>
-                    </div>
-                    
-                    <div className="w-16 h-[1px] bg-gray-800 my-1"></div>
-                    
-                    <div className="mt-4">
-                        <span className="block text-[10px] text-blue-400 font-medium mb-1">{cardioLoadStatus || "N/A"}</span>
-                        <div className="flex flex-col items-center">
-                            <span className="text-3xl font-black text-white leading-none">{cScore}</span>
-                            {vo2Max && (
-                                <span className="text-[10px] text-purple-400 font-bold mt-1 bg-purple-900/20 px-2 py-0.5 rounded-full border border-purple-900/30">
-                                    VO2: {vo2Max}
-                                </span>
-                            )}
+                        
+                        <div className="w-12 sm:w-16 h-[1px] bg-gray-800 my-1"></div>
+                        
+                        <div className="mt-2">
+                            <div className="flex flex-col items-center">
+                                <span className="text-xl sm:text-3xl font-black text-white leading-none">{exDays}/7</span>
+                                {vo2Max && (
+                                    <span className="text-[8px] sm:text-[10px] text-purple-400 font-bold mt-1 bg-purple-900/20 px-2 py-0.5 rounded-full border border-purple-900/30">
+                                        VO2: {vo2Max}
+                                    </span>
+                                )}
+                            </div>
+                            <span className="block text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest font-semibold mt-1">Exercise Days</span>
+                            <span className="text-[8px] sm:text-[10px] text-gray-500 mt-1 block italic">
+                                Current week
+                            </span>
                         </div>
-                        <span className="block text-xs text-gray-400 uppercase tracking-widest font-semibold mt-1">Cardio Load</span>
-                        <span className="text-[10px] text-gray-500 mt-2 block">
-                            Target: <span className="text-gray-300 font-mono">{tMin}-{tMax}</span>
-                        </span>
                     </div>
                 </div>
             </div>

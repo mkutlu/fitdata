@@ -27,6 +27,6 @@ server:
     session:
       cookie:
         http-only: true
-        secure: true
-        same-site: none
+        secure: ${COOKIE_SECURE:true}
+        same-site: ${COOKIE_SAMESITE:none}
   forward-headers-strategy: framework

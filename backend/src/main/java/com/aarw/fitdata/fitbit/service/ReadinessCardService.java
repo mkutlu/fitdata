@@ -40,18 +40,14 @@ public class ReadinessCardService {
         var token = tokenService.getValidTokenOrThrow();
         String dateStr = date.toString();
 
-        // 1. Fetch VO2 Max (Cardio Fitness Score) - This is a documented endpoint.
-        // We use it as the primary "Cardio" metric.
+        // 1. Fetch VO2 Max (Cardio Fitness Score)
         Integer cardioScore = null;
         String vo2MaxText = null;
         try {
             FitbitVo2MaxResponse vo2MaxRaw = apiClient.getVo2Max(token, dateStr);
-            log.info("VO2 Max API Response for {}: {}", dateStr, vo2MaxRaw);
             if (vo2MaxRaw != null && vo2MaxRaw.cardioscore() != null && !vo2MaxRaw.cardioscore().isEmpty()) {
                 var scoreVal = vo2MaxRaw.cardioscore().getFirst().value();
                 vo2MaxText = scoreVal.vo2Max();
-                // If it's a range like "45-49", take the average or first part. 
-                // For now, let's just keep the text and try to parse a score if possible for cardioLoadScore.
                 try {
                     if (vo2MaxText != null) {
                         String[] parts = vo2MaxText.split("-");
@@ -65,14 +61,29 @@ public class ReadinessCardService {
             log.error("Error fetching VO2 Max for {}: {}", dateStr, e.getMessage());
         }
 
-        // 2. Estimate Readiness Score
-        // Since the official Readiness API is not public, we rely on our estimator.
+        // 2. Calculate Exercise Days (Current Week starting Monday)
+        int exerciseDaysCount = 0;
+        try {
+            // Loop from Monday until the selected date
+            LocalDate current = date.with(java.time.DayOfWeek.MONDAY);
+            while (!current.isAfter(date)) {
+                FitbitActivitiesSummaryResponse summary = apiClient.getActivitiesSummaryForDay(token, current.toString());
+                if (summary != null && summary.summary() != null) {
+                    // Consider a day as "Exercise Day" if activity calories > 250
+                    if (summary.summary().activityCalories() != null && summary.summary().activityCalories() > 250) {
+                        exerciseDaysCount++;
+                    }
+                }
+                current = current.plusDays(1);
+            }
+        } catch (Exception e) {
+            log.error("Error calculating exercise days for {}: {}", dateStr, e.getMessage());
+        }
+
+        // 3. Estimate Readiness Score
         Integer readinessScore = estimateReadiness(date);
         String readinessStatus = "ESTIMATED";
 
-        // 3. Return data. 
-        // We use cardioScore from VO2Max as a proxy for cardioLoadScore if applicable, 
-        // but note that Fitbit's "Cardio Load" is technically different.
         return new ReadinessCardDto(
                 date,
                 readinessScore,
@@ -81,7 +92,8 @@ public class ReadinessCardService {
                 null, // targetMax
                 readinessStatus,
                 null, // cardioStatus
-                vo2MaxText
+                vo2MaxText,
+                exerciseDaysCount
         );
     }
 

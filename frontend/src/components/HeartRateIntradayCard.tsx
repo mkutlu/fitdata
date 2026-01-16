@@ -23,6 +23,7 @@ export function HeartRateIntradayCard({ baseDate }: Props) {
     const [data, setData] = useState<HeartRateIntradayDto | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [view, setView] = useState<"chart" | "zones">("chart");
 
     useEffect(() => {
         let alive = true;
@@ -118,13 +119,18 @@ export function HeartRateIntradayCard({ baseDate }: Props) {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                    <button
+                        onClick={() => setView(view === "chart" ? "zones" : "chart")}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-700 transition-colors"
+                    >
+                        {view === "chart" ? "View Zones" : "View Chart"}
+                    </button>
                     <StatPill label="Resting HR" value={data?.restingHr == null ? "—" : `${data.restingHr} bpm`} />
-                    <StatPill label="Total time" value={data ? `${totalZoneMinutes} min` : "—"} />
-                    <StatPill label="Energy burned" value={data?.caloriesOut == null ? "—" : `${data.caloriesOut} cal`} />
+                    <StatPill label="Energy" value={data?.caloriesOut == null ? "—" : `${data.caloriesOut} cal`} />
                 </div>
             </div>
 
-            <div className="mt-5 h-64 sm:h-72 lg:h-[380px] flex-shrink-0">
+            <div className="mt-5 h-64 sm:h-72 lg:h-[400px] flex-shrink-0">
                 {loading && <div className="text-sm text-slate-300">Loading…</div>}
 
                 {!loading && error && (
@@ -141,70 +147,73 @@ export function HeartRateIntradayCard({ baseDate }: Props) {
 
                 {!loading && !error && hasPoints && data && (
                     <div className="w-full h-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="t" tick={{ fontSize: 12 }} minTickGap={24} />
-                                <YAxis tick={{ fontSize: 12 }} domain={yDomain} />
-                                <Tooltip formatter={(v) => [`${v} bpm`, "HR"]} />
-
-                                {zones.map((z, idx) => (
-                                    <ReferenceArea
-                                        key={`${z.name}-${idx}`}
-                                        y1={z.min as number}
-                                        y2={z.max as number}
-                                        fillOpacity={0.10}
-                                        fill={zoneFill(z.name)}
+                        {view === "chart" ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                                    <XAxis dataKey="t" tick={{ fontSize: 12, fill: '#94a3b8' }} minTickGap={24} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} domain={yDomain} axisLine={false} tickLine={false} />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#f1f5f9' }}
+                                        formatter={(v) => [`${v} bpm`, "HR"]} 
                                     />
-                                ))}
 
-                                <ReferenceLine y={data.minBpm} strokeDasharray="4 4" />
-                                <ReferenceLine y={data.maxBpm} strokeDasharray="4 4" />
+                                    {zones.map((z, idx) => (
+                                        <ReferenceArea
+                                            key={`${z.name}-${idx}`}
+                                            y1={z.min as number}
+                                            y2={z.max as number}
+                                            fillOpacity={0.05}
+                                            fill={zoneFill(z.name)}
+                                        />
+                                    ))}
 
-                                <Line type="monotone" dataKey="bpm" stroke="#38bdf8" strokeWidth={2} dot={false} />
-                            </LineChart>
-                        </ResponsiveContainer>
+                                    <ReferenceLine y={data.minBpm} strokeDasharray="4 4" stroke="#94a3b8" strokeOpacity={0.5} />
+                                    <ReferenceLine y={data.maxBpm} strokeDasharray="4 4" stroke="#94a3b8" strokeOpacity={0.5} />
+
+                                    <Line type="monotone" dataKey="bpm" stroke="#38bdf8" strokeWidth={2.5} dot={false} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="w-full h-full flex flex-col">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <div className="text-sm font-semibold text-slate-100">Heart Rate Zones</div>
+                                    <div className="text-sm text-slate-400">{totalZoneMinutes} min total</div>
+                                </div>
+                                <div className="flex-1">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={zoneBarData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                            <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                            <Tooltip 
+                                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                                                itemStyle={{ color: '#f1f5f9' }}
+                                                formatter={(v) => [`${v} min`, "Minutes"]} 
+                                            />
+                                            <Bar dataKey="minutes" radius={[6, 6, 0, 0]}>
+                                                {zoneBarData.map((entry, idx) => (
+                                                    <Cell key={`cell-${idx}`} fill={entry.fill} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="mt-4 grid grid-cols-2 gap-4">
+                                    <div className="rounded-xl border border-slate-800 bg-slate-950/20 p-3">
+                                        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Activity Calories</div>
+                                        <div className="mt-1 text-lg font-semibold text-slate-100">{data?.activityCalories ?? 0} cal</div>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-800 bg-slate-950/20 p-3">
+                                        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total Burned</div>
+                                        <div className="mt-1 text-lg font-semibold text-slate-100">{data?.caloriesOut ?? 0} cal</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/20 p-5">
-                    <div className="text-sm font-semibold text-slate-100">Heart rate zones</div>
-                    <div className="mt-2 text-sm text-slate-300">{data ? `${totalZoneMinutes} min total` : "—"}</div>
-
-                    <div className="mt-4 h-44">
-                        <div className="w-full h-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={zoneBarData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                                    <YAxis tick={{ fontSize: 12 }} />
-                                    <Tooltip formatter={(v) => [`${v} min`, "Minutes"]} />
-                                    <Bar dataKey="minutes" radius={[10, 10, 10, 10]}>
-                                        {zoneBarData.map((entry, idx) => (
-                                            <Cell key={`cell-${idx}`} fill={entry.fill} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/20 p-5">
-                    <div className="text-sm font-semibold text-slate-100">Energy</div>
-                    <div className="mt-3 space-y-2 text-sm text-slate-300">
-                        <div className="flex items-center justify-between">
-                            <span>Calories out</span>
-                            <span className="font-semibold text-slate-100">{data?.caloriesOut ?? "—"}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span>Activity calories</span>
-                            <span className="font-semibold text-slate-100">{data?.activityCalories ?? "—"}</span>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );

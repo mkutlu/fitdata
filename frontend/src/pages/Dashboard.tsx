@@ -9,7 +9,7 @@ import { ReadinessCard } from "../components/ReadinessCard";
 import { fetchProfile, type UserProfileDto } from "../api/profileApi";
 import { fetchAuthStatus, logout } from "../api/authApi";
 import type { StepsRange } from "../api/stepsApi";
-import {LiveWorkoutCard} from "../components/LiveWorkoutCard.tsx";
+// import {LiveWorkoutCard} from "../components/LiveWorkoutCard.tsx";
 import logo from "../assets/fitdata-logo.png";
 
 const LAYOUT_STORAGE_KEY = "fitdata-dashboard-layout";
@@ -21,7 +21,7 @@ const defaultLayouts: any = {
         { i: "weight", x: 6, y: 8, w: 6, h: 12 },
         { i: "heart", x: 0, y: 20, w: 12, h: 12 },
         { i: "sleep", x: 0, y: 32, w: 12, h: 12 },
-        { i: "live", x: 0, y: 44, w: 4, h: 5 },
+        // { i: "live", x: 0, y: 44, w: 4, h: 5 },
     ],
     md: [
         { i: "readiness", x: 0, y: 0, w: 12, h: 8 },
@@ -29,7 +29,7 @@ const defaultLayouts: any = {
         { i: "weight", x: 6, y: 8, w: 6, h: 12 },
         { i: "heart", x: 0, y: 20, w: 12, h: 12 },
         { i: "sleep", x: 0, y: 32, w: 12, h: 12 },
-        { i: "live", x: 0, y: 44, w: 6, h: 5 },
+        // { i: "live", x: 0, y: 44, w: 6, h: 5 },
     ],
     sm: [
         { i: "readiness", x: 0, y: 0, w: 6, h: 8 },
@@ -37,7 +37,7 @@ const defaultLayouts: any = {
         { i: "weight", x: 0, y: 18, w: 6, h: 10 },
         { i: "heart", x: 0, y: 28, w: 6, h: 10 },
         { i: "sleep", x: 0, y: 38, w: 6, h: 10 },
-        { i: "live", x: 0, y: 48, w: 6, h: 5 },
+        // { i: "live", x: 0, y: 48, w: 6, h: 5 },
     ],
 };
 
@@ -111,7 +111,7 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
                             </div>
                         </div>
                     </div>
-                    <div key="live">
+                    {/* <div key="live">
                         <div className="h-full w-full flex flex-col">
                             <div className="drag-handle h-6 w-full cursor-move bg-slate-800/20 hover:bg-slate-800/40 rounded-t-2xl flex items-center justify-center">
                                 <div className="w-8 h-1 bg-slate-700 rounded-full" />
@@ -120,7 +120,7 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
                                 <LiveWorkoutCard />
                             </div>
                         </div>
-                    </div>
+                    </div> */}
                 </ResponsiveGridLayout>
             )}
         </div>
@@ -264,11 +264,11 @@ export function Dashboard() {
                 {!loading && !error && isAuthenticated && profile && (
                     <>
                         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center">
-                            <div className="order-2 lg:order-1 lg:col-span-5 xl:col-span-4">
+                            <div className="order-2 lg:order-1 lg:col-span-6">
                                 <DateBarCompact selectedDate={selectedDate} readableDate={readableDate} onChange={setSelectedDate} />
                             </div>
 
-                            <div className="order-1 lg:order-2 lg:col-span-7 xl:col-span-8">
+                            <div className="order-1 lg:order-2 lg:col-span-6">
                                 <ProfileCompactBarCompact profile={profile} />
                             </div>
                         </div>

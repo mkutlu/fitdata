@@ -7,6 +7,7 @@ export type ReadinessCardDto = {
     readinessStatus: string | null;
     cardioLoadStatus: string | null;
     vo2Max: string | null;
+    exerciseDays: number | null;
 };
 
 export async function fetchReadiness(baseDate: string): Promise<ReadinessCardDto> {

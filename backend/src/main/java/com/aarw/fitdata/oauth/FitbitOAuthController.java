@@ -144,6 +144,7 @@ public class FitbitOAuthController {
     public record AuthStatusResponse(boolean authenticated) {}
 
     private FitbitTokenResponse exchangeCodeForToken(String code, String verifier) {
+        log.info("Exchanging code for token, redirect_uri={}", props.redirectUri());
         String auth = Base64.getEncoder().encodeToString(
                 (props.clientId() + ":" + props.clientSecret()).getBytes(StandardCharsets.UTF_8)
         );

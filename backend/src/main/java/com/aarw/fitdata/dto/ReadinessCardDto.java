@@ -10,5 +10,6 @@ public record ReadinessCardDto(
         Integer cardioLoadTargetMax,
         String readinessStatus,
         String cardioLoadStatus,
-        String vo2Max
+        String vo2Max,
+        Integer exerciseDays
 ) {}

@@ -41,15 +41,21 @@ public class FitbitTokenService {
         }
 
         log.info("Fitbit access token expired or near expiry, refreshing");
-        FitbitTokenResponse refreshed = refresh(token.getRefreshToken());
+        try {
+            FitbitTokenResponse refreshed = refresh(token.getRefreshToken());
 
-        token.setAccessToken(refreshed.accessToken());
-        token.setRefreshToken(refreshed.refreshToken());
-        token.setTokenType(refreshed.tokenType());
-        token.setScope(refreshed.scope());
-        token.setExpiresAt(refreshed.expiresAt());
+            token.setAccessToken(refreshed.accessToken());
+            token.setRefreshToken(refreshed.refreshToken());
+            token.setTokenType(refreshed.tokenType());
+            token.setScope(refreshed.scope());
+            token.setExpiresAt(refreshed.expiresAt());
 
-        return repo.save(token);
+            return repo.save(token);
+        } catch (Exception e) {
+            log.warn("Failed to refresh Fitbit token, deleting invalid token from database: {}", e.getMessage());
+            repo.delete(token);
+            throw new IllegalStateException("Fitbit connection lost. Please login again.", e);
+        }
     }
 
     private FitbitTokenResponse refresh(String refreshToken) {
