@@ -50,12 +50,13 @@ Each service (Backend and Frontend) requires specific environment variables. You
 #### Troubleshooting 502 Errors
 
 If you see a 502 Bad Gateway error on the frontend:
-1. **Check Backend Status**: Ensure the backend service is running and healthy. Check its logs for any startup errors (e.g., database connection issues).
-2. **Verify `BACKEND_URL`**: Double-check that the `BACKEND_URL` in the Frontend service exactly matches the internal URL of your backend. It should be `http://<backend-service-name>.railway.internal:8080`.
-3. **Internal DNS**: Railway sometimes takes a moment to propagate internal DNS. If the backend was just deployed, wait a minute and refresh.
-4. **Port Mapping**: Ensure your backend is listening on the port specified in `BACKEND_URL` (default is 8080).
-5. **Private Network**: Ensure both services are in the same Railway project to use internal networking.
-6. **Health Check**: You can verify if the frontend container is healthy by checking the `/health` endpoint on its domain.
+1. **Check Nginx Logs**: In Railway, check the logs for the frontend service. Look for any "emerg" or "error" messages.
+2. **Verify `BACKEND_URL`**: Ensure `BACKEND_URL` is set correctly in the Frontend service variables. It should be `http://<backend-service-name>.railway.internal:8080`. **Do not include a trailing slash.**
+3. **Check `PORT` Variable**: Railway automatically provides a `PORT` variable. Our Nginx configuration is set to use it. If you have manually set `PORT` to something else, ensure it doesn't conflict.
+4. **Check Backend Status**: Ensure the backend service is running and healthy. If the backend is down, Nginx will return a 502 when trying to access `/api/` or `/oauth/`.
+5. **Home Screen 502**: If the home screen itself (not an API call) returns 502, it usually means Nginx failed to start or Railway cannot reach it. Check if the frontend container is crashing.
+6. **Internal DNS**: Railway sometimes takes a moment to propagate internal DNS. If the backend was just deployed, wait a minute and refresh.
+7. **Private Network**: Ensure both services are in the same Railway project to use internal networking.
 
 #### Step 6: Update Fitbit Application Settings
 1. Go to the [Fitbit Developer Portal](https://dev.fitbit.com/apps).
