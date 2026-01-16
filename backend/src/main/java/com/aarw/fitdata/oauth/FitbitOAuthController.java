@@ -6,9 +6,15 @@ import com.aarw.fitdata.oauth.token.FitbitTokenRepository;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +25,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -81,8 +88,9 @@ public class FitbitOAuthController {
     }
 
     @GetMapping("/oauth/fitbit/status")
-    public ResponseEntity<AuthStatusResponse> status() {
-        boolean authenticated = tokenRepository.count() > 0;
+    public ResponseEntity<AuthStatusResponse> status(HttpSession session) {
+        SecurityContext context = (SecurityContext) session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        boolean authenticated = context != null && context.getAuthentication() != null && context.getAuthentication().isAuthenticated();
         return ResponseEntity.ok(new AuthStatusResponse(authenticated));
     }
 
@@ -90,6 +98,7 @@ public class FitbitOAuthController {
     public ResponseEntity<Void> logout(HttpSession session) {
         tokenRepository.deleteAll();
         session.invalidate();
+        SecurityContextHolder.clearContext();
         return ResponseEntity.ok().build();
     }
 
@@ -99,11 +108,12 @@ public class FitbitOAuthController {
             @org.springframework.web.bind.annotation.RequestParam String state,
             HttpSession session
     ) {
+        log.info("Callback received with state={}", state);
         String savedState = (String) session.getAttribute(SESSION_STATE);
         String verifier = (String) session.getAttribute(SESSION_VERIFIER);
 
         if (savedState == null || !savedState.equals(state) || verifier == null) {
-            log.error("OAuth callback state mismatch or missing verifier");
+            log.error("OAuth callback state mismatch or missing verifier. savedState={}, receivedState={}", savedState, state);
             return ResponseEntity.status(400).build();
         }
 
@@ -121,6 +131,15 @@ public class FitbitOAuthController {
             entity.setExpiresAt(resp.expiresAt());
 
             tokenRepository.save(entity);
+
+            // Establish SecurityContext for the session
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    resp.userId(), null, List.of(new SimpleGrantedAuthority("ROLE_USER"))
+            );
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(auth);
+            SecurityContextHolder.setContext(context);
+            session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
 
             log.info("Fitbit OAuth successful for user={}", resp.userId());
             
@@ -162,20 +181,14 @@ public class FitbitOAuthController {
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(BodyInserters.fromFormData(form))
                 .retrieve()
-                .bodyToMono(java.util.Map.class)
+                .bodyToMono(new ParameterizedTypeReference<java.util.Map<String, Object>>() {})
                 .block();
 
-        if (token == null) {
+        FitbitTokenResponse resp = FitbitTokenResponse.fromMap(token);
+        if (resp == null) {
             throw new IllegalStateException("Token response is null");
         }
 
-        String accessToken = String.valueOf(token.get("access_token"));
-        String refreshToken = String.valueOf(token.get("refresh_token"));
-        String tokenType = token.get("token_type") == null ? null : String.valueOf(token.get("token_type"));
-        String scope = token.get("scope") == null ? null : String.valueOf(token.get("scope"));
-        String userId = token.get("user_id") == null ? null : String.valueOf(token.get("user_id"));
-        long expiresIn = token.get("expires_in") == null ? 0L : Long.parseLong(String.valueOf(token.get("expires_in")));
-
-        return new FitbitTokenResponse(accessToken, refreshToken, tokenType, scope, userId, expiresIn);
+        return resp;
     }
 }

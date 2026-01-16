@@ -4,8 +4,10 @@ import com.aarw.fitdata.config.FitbitProps;
 import com.aarw.fitdata.oauth.FitbitTokenResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -33,8 +35,19 @@ public class FitbitTokenService {
     }
 
     public FitbitTokenEntity getValidTokenOrThrow() {
-        FitbitTokenEntity token = repo.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("No Fitbit token found. Connect Fitbit first."));
+        String userId = SecurityContextHolder.getContext().getAuthentication() != null 
+                ? SecurityContextHolder.getContext().getAuthentication().getName() 
+                : null;
+
+        FitbitTokenEntity token;
+        if (userId != null && !"anonymousUser".equals(userId)) {
+            token = repo.findByFitbitUserId(userId)
+                    .orElseThrow(() -> new IllegalStateException("No Fitbit token found for user: " + userId));
+        } else {
+            // Fallback for non-authenticated (should be blocked by SecurityConfig, but for safety)
+            token = repo.findAll().stream().findFirst()
+                    .orElseThrow(() -> new IllegalStateException("No Fitbit token found. Connect Fitbit first."));
+        }
 
         if (token.getExpiresAt() != null && token.getExpiresAt().isAfter(Instant.now().plusSeconds(30))) {
             return token;
@@ -67,26 +80,20 @@ public class FitbitTokenService {
         form.add("grant_type", "refresh_token");
         form.add("refresh_token", refreshToken);
 
-        Map body = webClient.post()
+        Map<String, Object> body = webClient.post()
                 .uri(props.tokenUri())
                 .header(HttpHeaders.AUTHORIZATION, "Basic " + auth)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(BodyInserters.fromFormData(form))
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
                 .block();
 
-        if (body == null) {
+        FitbitTokenResponse refreshed = FitbitTokenResponse.fromMap(body);
+        if (refreshed == null) {
             throw new IllegalStateException("Refresh token response is null");
         }
 
-        String access = String.valueOf(body.get("access_token"));
-        String refresh = String.valueOf(body.get("refresh_token"));
-        String type = body.get("token_type") == null ? null : String.valueOf(body.get("token_type"));
-        String scope = body.get("scope") == null ? null : String.valueOf(body.get("scope"));
-        String userId = body.get("user_id") == null ? null : String.valueOf(body.get("user_id"));
-        long expiresIn = body.get("expires_in") == null ? 0L : Long.parseLong(String.valueOf(body.get("expires_in")));
-
-        return new FitbitTokenResponse(access, refresh, type, scope, userId, expiresIn);
+        return refreshed;
     }
 }

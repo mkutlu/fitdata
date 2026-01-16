@@ -28,5 +28,5 @@ server:
       cookie:
         http-only: true
         secure: ${COOKIE_SECURE:true}
-        same-site: ${COOKIE_SAMESITE:none}
+        same-site: ${COOKIE_SAMESITE:lax}
   forward-headers-strategy: framework

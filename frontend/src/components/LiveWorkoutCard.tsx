@@ -27,7 +27,7 @@ export function LiveWorkoutCard() {
     const stale = useMemo(() => {
         if (!live) return false;
         const now = Date.now();
-        return now - live.ts > 5000; // 5s veri gelmediyse stale
+        return now - live.ts > 5000; // Stale if no data for 5s
     }, [live]);
 
     useEffect(() => {
@@ -37,7 +37,7 @@ export function LiveWorkoutCard() {
         const connect = () => {
             setStatus("connecting");
 
-            // Not: Vite proxy veya aynı origin ise bu yeterli
+            // Note: This is sufficient if using Vite proxy or same origin
             es = new EventSource("/api/live/stream");
 
             es.onopen = () => {
@@ -63,7 +63,7 @@ export function LiveWorkoutCard() {
                 }
                 es = null;
 
-                // Basit retry
+                // Simple retry
                 if (retryTimer) window.clearTimeout(retryTimer);
                 retryTimer = window.setTimeout(connect, 1500);
             };

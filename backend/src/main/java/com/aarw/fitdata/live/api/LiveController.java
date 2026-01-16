@@ -31,7 +31,7 @@ public class LiveController {
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
-        SseEmitter emitter = new SseEmitter(0L); // timeout yok
+        SseEmitter emitter = new SseEmitter(0L); // no timeout
         emitters.add(emitter);
 
         emitter.onCompletion(() -> emitters.remove(emitter));

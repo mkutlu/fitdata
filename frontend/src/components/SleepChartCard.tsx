@@ -81,7 +81,7 @@ export function SleepChartCard({ baseDate }: Props) {
             const val = LEVEL_VALUE[levelStr] || 0;
             const startTime = new Date(s.startTime);
             
-            // Başlangıç noktası
+            // Start point
             points.push({
                 time: startTime.getTime(),
                 level: val,
@@ -90,7 +90,7 @@ export function SleepChartCard({ baseDate }: Props) {
                 displayTime: startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             });
 
-            // Bitiş noktası (basamaklı görünüm için aynı seviyede devam eder)
+            // End point (continues at same level for step-like appearance)
             const endTime = new Date(startTime.getTime() + s.durationSeconds * 1000);
             points.push({
                 time: endTime.getTime(),

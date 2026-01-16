@@ -37,7 +37,7 @@ export function ReadinessCard({ baseDate }: Props) {
     
     if (error) return (
         <div className="bg-red-900/10 border border-red-900/30 text-red-400 p-6 rounded-2xl h-[280px] flex flex-col items-center justify-center">
-            <span className="text-lg font-semibold mb-2">Veri Yüklenemedi</span>
+            <span className="text-lg font-semibold mb-2">Failed to load data</span>
             <p className="text-sm opacity-80 text-center">{error}</p>
         </div>
     );
