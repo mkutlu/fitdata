@@ -5,6 +5,7 @@ import { StepsChartCard } from "../components/StepsChartCard";
 import { WeightChartCard } from "../components/WeightChartCard";
 import { HeartRateIntradayCard } from "../components/HeartRateIntradayCard";
 import { SleepChartCard } from "../components/SleepChartCard";
+import { ReadinessCard } from "../components/ReadinessCard";
 import { fetchProfile, type UserProfileDto } from "../api/profileApi";
 import { fetchAuthStatus, logout } from "../api/authApi";
 import type { StepsRange } from "../api/stepsApi";
@@ -15,25 +16,28 @@ const LAYOUT_STORAGE_KEY = "fitdata-dashboard-layout";
 
 const defaultLayouts: { [P: string]: Layout[] } = {
     lg: [
-        { i: "steps", x: 0, y: 0, w: 6, h: 12 },
-        { i: "weight", x: 6, y: 0, w: 6, h: 12 },
-        { i: "heart", x: 0, y: 12, w: 12, h: 12 },
-        { i: "sleep", x: 0, y: 24, w: 12, h: 12 },
-        { i: "live", x: 0, y: 36, w: 4, h: 5 },
+        { i: "readiness", x: 0, y: 0, w: 12, h: 8 },
+        { i: "steps", x: 0, y: 8, w: 6, h: 12 },
+        { i: "weight", x: 6, y: 8, w: 6, h: 12 },
+        { i: "heart", x: 0, y: 20, w: 12, h: 12 },
+        { i: "sleep", x: 0, y: 32, w: 12, h: 12 },
+        { i: "live", x: 0, y: 44, w: 4, h: 5 },
     ],
     md: [
-        { i: "steps", x: 0, y: 0, w: 6, h: 12 },
-        { i: "weight", x: 6, y: 0, w: 6, h: 12 },
-        { i: "heart", x: 0, y: 12, w: 12, h: 12 },
-        { i: "sleep", x: 0, y: 24, w: 12, h: 12 },
-        { i: "live", x: 0, y: 36, w: 6, h: 5 },
+        { i: "readiness", x: 0, y: 0, w: 12, h: 8 },
+        { i: "steps", x: 0, y: 8, w: 6, h: 12 },
+        { i: "weight", x: 6, y: 8, w: 6, h: 12 },
+        { i: "heart", x: 0, y: 20, w: 12, h: 12 },
+        { i: "sleep", x: 0, y: 32, w: 12, h: 12 },
+        { i: "live", x: 0, y: 44, w: 6, h: 5 },
     ],
     sm: [
-        { i: "steps", x: 0, y: 0, w: 6, h: 10 },
-        { i: "weight", x: 0, y: 10, w: 6, h: 10 },
-        { i: "heart", x: 0, y: 20, w: 6, h: 10 },
-        { i: "sleep", x: 0, y: 30, w: 6, h: 10 },
-        { i: "live", x: 0, y: 40, w: 6, h: 5 },
+        { i: "readiness", x: 0, y: 0, w: 6, h: 8 },
+        { i: "steps", x: 0, y: 8, w: 6, h: 10 },
+        { i: "weight", x: 0, y: 18, w: 6, h: 10 },
+        { i: "heart", x: 0, y: 28, w: 6, h: 10 },
+        { i: "sleep", x: 0, y: 38, w: 6, h: 10 },
+        { i: "live", x: 0, y: 48, w: 6, h: 5 },
     ],
 };
 
@@ -58,6 +62,16 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
                     draggableHandle=".drag-handle"
                     onLayoutChange={onLayoutChange}
                 >
+                    <div key="readiness">
+                        <div className="h-full w-full flex flex-col">
+                            <div className="drag-handle h-6 w-full cursor-move bg-slate-800/20 hover:bg-slate-800/40 rounded-t-2xl flex items-center justify-center">
+                                <div className="w-8 h-1 bg-slate-700 rounded-full" />
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <ReadinessCard baseDate={selectedDate} />
+                            </div>
+                        </div>
+                    </div>
                     <div key="steps">
                         <div className="h-full w-full flex flex-col">
                             <div className="drag-handle h-6 w-full cursor-move bg-slate-800/20 hover:bg-slate-800/40 rounded-t-2xl flex items-center justify-center">
