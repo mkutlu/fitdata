@@ -2,23 +2,30 @@ package com.aarw.fitdata.fitbit.service;
 
 import com.aarw.fitdata.dto.HeartRateIntradayDto;
 import com.aarw.fitdata.fitbit.FitbitApiClient;
+import com.aarw.fitdata.fitbit.FitbitRateLimitException;
 import com.aarw.fitdata.fitbit.dto.FitbitActivitiesSummaryResponse;
 import com.aarw.fitdata.fitbit.dto.FitbitHeartDailyRangeResponse;
 import com.aarw.fitdata.fitbit.dto.FitbitHeartIntradayResponse;
 import com.aarw.fitdata.oauth.token.FitbitTokenEntity;
 import com.aarw.fitdata.oauth.token.FitbitTokenService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class HeartRateIntradayService {
 
+    private static final Logger log = LoggerFactory.getLogger(HeartRateIntradayService.class);
+
     private final FitbitTokenService tokenService;
     private final FitbitApiClient apiClient;
+
+    private final Map<String, FitbitHeartIntradayResponse> intradayCache = new ConcurrentHashMap<>();
+    private final Map<String, String> bestDetailLevel = new ConcurrentHashMap<>();
 
     public HeartRateIntradayService(FitbitTokenService tokenService, FitbitApiClient apiClient) {
         this.tokenService = tokenService;
@@ -68,13 +75,42 @@ public class HeartRateIntradayService {
     }
 
     private FitbitHeartIntradayResponse fetchIntradayWithFallback(FitbitTokenEntity token, String dateIso) {
-        FitbitHeartIntradayResponse r1 = apiClient.getHeartIntraday(token, dateIso, "1min");
-        if (hasData(r1)) return r1;
+        if (intradayCache.containsKey(dateIso)) {
+            return intradayCache.get(dateIso);
+        }
 
-        FitbitHeartIntradayResponse r2 = apiClient.getHeartIntraday(token, dateIso, "5min");
-        if (hasData(r2)) return r2;
+        String knownLevel = bestDetailLevel.get(dateIso);
+        if (knownLevel != null) {
+            try {
+                FitbitHeartIntradayResponse r = apiClient.getHeartIntraday(token, dateIso, knownLevel);
+                intradayCache.put(dateIso, r);
+                return r;
+            } catch (FitbitRateLimitException e) {
+                log.warn("Rate limit hit while fetching intraday for {} with level {}. Retry-after: {}", dateIso, knownLevel, e.getRetryAfter());
+                throw e;
+            } catch (Exception e) {
+                log.warn("Failed to fetch intraday for {} with known level {}. Falling back to full probe.", dateIso, knownLevel);
+            }
+        }
 
-        return apiClient.getHeartIntraday(token, dateIso, "15min");
+        List<String> levels = List.of("1min", "5min", "15min");
+        for (String level : levels) {
+            try {
+                FitbitHeartIntradayResponse r = apiClient.getHeartIntraday(token, dateIso, level);
+                if (hasData(r)) {
+                    bestDetailLevel.put(dateIso, level);
+                    intradayCache.put(dateIso, r);
+                    return r;
+                }
+            } catch (FitbitRateLimitException e) {
+                log.warn("Rate limit hit during probe for {} at level {}.", dateIso, level);
+                throw e;
+            } catch (Exception e) {
+                log.debug("Probe failed for {} at level {}: {}", dateIso, level, e.getMessage());
+            }
+        }
+
+        return null;
     }
 
     private boolean hasData(FitbitHeartIntradayResponse r) {

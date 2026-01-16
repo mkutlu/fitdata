@@ -14,6 +14,7 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/.env", "/.git/**", "/wp-login.php", "/admin/**").denyAll()
                         .requestMatchers("/oauth/fitbit/**", "/api/profile", "/actuator/health", "/actuator/info").permitAll()
                         .anyRequest().permitAll()
                 )
