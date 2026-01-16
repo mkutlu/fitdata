@@ -2,8 +2,9 @@ server {
     listen ${PORT};
     server_name localhost;
 
-    # Railway uses Docker internal DNS at 127.0.0.11
-    resolver 127.0.0.11 valid=30s;
+    # Railway internal DNS resolver
+    resolver 127.0.0.11 8.8.8.8 valid=5s;
+    resolver_timeout 5s;
 
     # Logging to stdout/stderr for Railway to capture
     error_log /dev/stderr info;
