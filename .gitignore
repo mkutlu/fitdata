@@ -11,7 +11,7 @@ out/
 target/
 *.log
 
-# Maven Wrapper (wrapper scripts kalsın, jar kalsın)
+# Maven Wrapper
 !.mvn/wrapper/maven-wrapper.jar
 !.mvn/wrapper/maven-wrapper.properties
 !.mvn/wrapper/MavenWrapperDownloader.java
@@ -31,7 +31,6 @@ pnpm-debug.log*
 *.pem
 *.key
 
-# === Docker / local volumes (genelde compose volume zaten dışarı yazmaz ama yine de) ===
 **/docker-data/
 
 # ===== Node / Frontend =====
