@@ -65,9 +65,10 @@ public class FitbitTokenService {
 
             return repo.save(token);
         } catch (Exception e) {
-            log.warn("Failed to refresh Fitbit token, deleting invalid token from database: {}", e.getMessage());
-            repo.delete(token);
-            throw new IllegalStateException("Fitbit connection lost. Please login again.", e);
+            log.warn("Failed to refresh Fitbit token for user {}: {}", token.getFitbitUserId(), e.getMessage());
+            // We don't delete the token here immediately because a temporary network issue 
+            // shouldn't destroy the connection. Let the user retry or handle it in the controller.
+            throw new IllegalStateException("Fitbit connection issue. Please try again or login.", e);
         }
     }
 

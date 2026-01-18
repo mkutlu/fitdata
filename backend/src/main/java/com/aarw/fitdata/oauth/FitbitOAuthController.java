@@ -96,7 +96,11 @@ public class FitbitOAuthController {
 
     @GetMapping("/oauth/fitbit/logout")
     public ResponseEntity<Void> logout(HttpSession session) {
-        tokenRepository.deleteAll();
+        SecurityContext context = (SecurityContext) session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        if (context != null && context.getAuthentication() != null) {
+            String userId = context.getAuthentication().getName();
+            tokenRepository.findByFitbitUserId(userId).ifPresent(tokenRepository::delete);
+        }
         session.invalidate();
         SecurityContextHolder.clearContext();
         return ResponseEntity.ok().build();
