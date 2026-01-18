@@ -167,24 +167,22 @@ export function Dashboard() {
     };
 
     useEffect(() => {
-        let alive = true;
+        const controller = new AbortController();
 
         (async () => {
             try {
                 const auth = await fetchAuthStatus();
-                if (!alive) return;
                 setIsAuthenticated(auth.authenticated);
 
                 if (auth.authenticated) {
-                    const data = await fetchProfile();
-                    if (!alive) return;
+                    const data = await fetchProfile(controller.signal);
                     setProfile(data);
                 } else {
                     // Reset layouts when not authenticated to ensure clean state on next login
                     setLayouts(JSON.parse(JSON.stringify(defaultLayouts)));
                 }
             } catch (err) {
-                if (!alive) return;
+                if (err instanceof Error && err.name === "AbortError") return;
                 console.error("Auth/Profile fetch failed", err);
                 const errorMessage = err instanceof Error ? err.message : String(err);
                 // Don't show technical error if it's just a missing token
@@ -197,7 +195,7 @@ export function Dashboard() {
         })();
 
         return () => {
-            alive = false;
+            controller.abort();
         };
     }, []);
 

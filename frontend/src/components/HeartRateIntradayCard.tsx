@@ -26,17 +26,16 @@ export function HeartRateIntradayCard({ baseDate }: Props) {
     const [view, setView] = useState<"chart" | "zones">("chart");
 
     useEffect(() => {
-        let alive = true;
+        const controller = new AbortController();
         setLoading(true);
         setError(null);
 
         (async () => {
             try {
-                const d = await fetchHeartRateIntraday(baseDate);
-                if (!alive) return;
+                const d = await fetchHeartRateIntraday(baseDate, controller.signal);
                 setData(d);
             } catch (e) {
-                if (!alive) return;
+                if (e instanceof Error && e.name === "AbortError") return;
                 setError(e instanceof Error ? e.message : "Unknown error");
             } finally {
                 setLoading(false);
@@ -44,7 +43,7 @@ export function HeartRateIntradayCard({ baseDate }: Props) {
         })();
 
         return () => {
-            alive = false;
+            controller.abort();
         };
     }, [baseDate]);
 

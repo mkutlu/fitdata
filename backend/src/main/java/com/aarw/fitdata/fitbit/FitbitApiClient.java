@@ -3,6 +3,7 @@ package com.aarw.fitdata.fitbit;
 import com.aarw.fitdata.config.FitbitProps;
 import com.aarw.fitdata.fitbit.dto.*;
 import com.aarw.fitdata.oauth.token.FitbitTokenEntity;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,7 @@ public class FitbitApiClient {
      * @param token the FitbitTokenEntity containing the access token for the API request
      * @return a FitbitProfileResponse containing the user profile information
      */
+    @Cacheable(value = "fitbit_profile", key = "#token.fitbitUserId")
     public FitbitProfileResponse getProfile(FitbitTokenEntity token) {
         String url = props.apiBaseUri() + "/1/user/-/profile.json";
         try {
@@ -60,6 +62,7 @@ public class FitbitApiClient {
      * @param endDate  the end date for the steps series data, in ISO 8601 format (yyyy-MM-dd)
      * @return a FitbitStepsSeriesResponse containing the daily steps series data
      */
+    @Cacheable(value = "fitbit_steps", key = "#token.fitbitUserId + '-' + #startDate + '-' + #endDate")
     public FitbitStepsSeriesResponse getDailyStepsSeries(FitbitTokenEntity token, String startDate, String endDate) {
         String url = props.apiBaseUri() + "/1/user/-/activities/steps/date/" + startDate + "/" + endDate + ".json";
         try {
@@ -83,6 +86,7 @@ public class FitbitApiClient {
         }
     }
 
+    @Cacheable(value = "fitbit_heart_range", key = "#token.fitbitUserId + '-' + #startDateIso + '-' + #endDateIso")
     public FitbitHeartDailyRangeResponse getHeartByDateRange(FitbitTokenEntity token, String startDateIso, String endDateIso) {
         String url = props.apiBaseUri() + "/1/user/-/activities/heart/date/" + startDateIso + "/" + endDateIso + ".json";
         try {
@@ -107,6 +111,7 @@ public class FitbitApiClient {
     }
 
 
+    @Cacheable(value = "fitbit_heart_intraday", key = "#token.fitbitUserId + '-' + #dateIso + '-' + #detailLevel")
     public FitbitHeartIntradayResponse getHeartIntraday(FitbitTokenEntity token, String dateIso, String detailLevel) {
         String url = props.apiBaseUri() + "/1/user/-/activities/heart/date/" + dateIso + "/1d/" + detailLevel + ".json";
 
@@ -141,6 +146,7 @@ public class FitbitApiClient {
         }
     }
 
+    @Cacheable(value = "fitbit_heart_day", key = "#token.fitbitUserId + '-' + #dateIso")
     public FitbitHeartDailyRangeResponse getHeartForDay(FitbitTokenEntity token, String dateIso) {
         String url = props.apiBaseUri() + "/1/user/-/activities/heart/date/" + dateIso + "/" + dateIso + ".json";
         try {
@@ -164,6 +170,7 @@ public class FitbitApiClient {
         }
     }
 
+    @Cacheable(value = "fitbit_activity_summary", key = "#token.fitbitUserId + '-' + #dateIso")
     public FitbitActivitiesSummaryResponse getActivitiesSummaryForDay(FitbitTokenEntity token, String dateIso) {
         String url = props.apiBaseUri() + "/1/user/-/activities/date/" + dateIso + ".json";
         try {
@@ -187,6 +194,7 @@ public class FitbitApiClient {
         }
     }
 
+    @Cacheable(value = "fitbit_weight", key = "#token.fitbitUserId + '-' + #startDate + '-' + #endDate")
     public FitbitWeightResponse getWeightSeries(FitbitTokenEntity token, String startDate, String endDate) {
         String url = props.apiBaseUri() + "/1/user/-/body/log/weight/date/" + startDate + "/" + endDate + ".json";
         try {
@@ -220,6 +228,7 @@ public class FitbitApiClient {
         }
     }
 
+    @Cacheable(value = "fitbit_sleep", key = "#token.fitbitUserId + '-' + #date")
     public FitbitSleepResponse getSleep(FitbitTokenEntity token, String date) {
         String url = props.apiBaseUri() + "/1.2/user/-/sleep/date/" + date + ".json";
         try {
@@ -253,6 +262,7 @@ public class FitbitApiClient {
         }
     }
 
+    @Cacheable(value = "fitbit_vo2max", key = "#token.fitbitUserId + '-' + #date")
     public FitbitVo2MaxResponse getVo2Max(FitbitTokenEntity token, String date) {
         String url = props.apiBaseUri() + "/1/user/-/cardioscore/date/" + date + ".json";
         try {
@@ -293,6 +303,7 @@ public class FitbitApiClient {
         }
     }
 
+    @Cacheable(value = "fitbit_hrv", key = "#token.fitbitUserId + '-' + #date")
     public FitbitHrvResponse getHrv(FitbitTokenEntity token, String date) {
         String url = props.apiBaseUri() + "/1/user/-/hrv/date/" + date + ".json";
         try {
@@ -333,6 +344,7 @@ public class FitbitApiClient {
         }
     }
 
+    @Cacheable(value = "fitbit_hrv_range", key = "#token.fitbitUserId + '-' + #startDate + '-' + #endDate")
     public FitbitHrvResponse getHrvRange(FitbitTokenEntity token, String startDate, String endDate) {
         String url = props.apiBaseUri() + "/1/user/-/hrv/date/" + startDate + "/" + endDate + ".json";
         try {

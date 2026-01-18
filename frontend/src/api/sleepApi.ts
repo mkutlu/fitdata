@@ -1,3 +1,5 @@
+import { fetchWithRetry } from "./fetchUtils";
+
 export type SleepLevelSegment = {
     startTime: string;
     level: "awake" | "rem" | "light" | "deep" | string;
@@ -20,9 +22,9 @@ export type SleepDto = {
     segments: SleepLevelSegment[];
 };
 
-export async function fetchSleep(date: string): Promise<SleepDto> {
+export async function fetchSleep(date: string, signal?: AbortSignal): Promise<SleepDto> {
     const url = `/api/sleep?date=${encodeURIComponent(date)}`;
-    const res = await fetch(url);
+    const res = await fetchWithRetry(url, { signal });
 
     if (!res.ok) {
         const text = await res.text().catch(() => "");

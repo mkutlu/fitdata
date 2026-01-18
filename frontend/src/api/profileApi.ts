@@ -1,3 +1,5 @@
+import { fetchWithRetry } from "./fetchUtils";
+
 export type UserProfileDto = {
     id: string;
     displayName: string;
@@ -14,8 +16,8 @@ type FitbitProfileApiResponse = {
     };
 };
 
-export async function fetchProfile(): Promise<UserProfileDto> {
-    const res = await fetch("/api/profile");
+export async function fetchProfile(signal?: AbortSignal): Promise<UserProfileDto> {
+    const res = await fetchWithRetry("/api/profile", { signal });
     if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`Failed to load profile: ${res.status} ${text}`);

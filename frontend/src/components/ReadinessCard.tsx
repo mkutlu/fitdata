@@ -11,22 +11,23 @@ export function ReadinessCard({ baseDate }: Props) {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        let alive = true;
+        const controller = new AbortController();
         setLoading(true);
         setError(null);
 
         (async () => {
             try {
-                const d = await fetchReadiness(baseDate);
-                if (alive) setData(d);
+                const d = await fetchReadiness(baseDate, controller.signal);
+                setData(d);
             } catch (e) {
-                if (alive) setError(e instanceof Error ? e.message : "Unknown error");
+                if (e instanceof Error && e.name === "AbortError") return;
+                setError(e instanceof Error ? e.message : "Unknown error");
             } finally {
-                if (alive) setLoading(false);
+                setLoading(false);
             }
         })();
 
-        return () => { alive = false; };
+        return () => { controller.abort(); };
     }, [baseDate]);
 
     if (loading) return (

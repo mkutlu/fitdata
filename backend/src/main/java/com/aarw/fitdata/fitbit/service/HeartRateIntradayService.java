@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -24,7 +25,6 @@ public class HeartRateIntradayService {
     private final FitbitTokenService tokenService;
     private final FitbitApiClient apiClient;
 
-    private final Map<String, FitbitHeartIntradayResponse> intradayCache = new ConcurrentHashMap<>();
     private final Map<String, String> bestDetailLevel = new ConcurrentHashMap<>();
 
     public HeartRateIntradayService(FitbitTokenService tokenService, FitbitApiClient apiClient) {
@@ -36,7 +36,14 @@ public class HeartRateIntradayService {
         var token = tokenService.getValidTokenOrThrow();
         String dateIso = baseDate.toString();
 
-        FitbitHeartIntradayResponse intraday = fetchIntradayWithFallback(token, dateIso);
+        // Start async calls
+        CompletableFuture<FitbitHeartIntradayResponse> intradayFuture = CompletableFuture.supplyAsync(() -> fetchIntradayWithFallback(token, dateIso));
+        CompletableFuture<FitbitHeartDailyRangeResponse> dayFuture = CompletableFuture.supplyAsync(() -> apiClient.getHeartForDay(token, dateIso));
+        CompletableFuture<FitbitActivitiesSummaryResponse> activityFuture = CompletableFuture.supplyAsync(() -> apiClient.getActivitiesSummaryForDay(token, dateIso));
+
+        CompletableFuture.allOf(intradayFuture, dayFuture, activityFuture).join();
+
+        FitbitHeartIntradayResponse intraday = intradayFuture.join();
         List<FitbitHeartIntradayResponse.DataPoint> dataset =
                 intraday == null || intraday.intraday() == null || intraday.intraday().dataset() == null
                         ? List.of()
@@ -52,7 +59,7 @@ public class HeartRateIntradayService {
             points = dataset.stream().map(p -> new HeartRateIntradayDto.Point(p.time(), p.value())).toList();
         }
 
-        FitbitHeartDailyRangeResponse day = apiClient.getHeartForDay(token, dateIso);
+        FitbitHeartDailyRangeResponse day = dayFuture.join();
         FitbitHeartDailyRangeResponse.ActivityHeart item =
                 day == null || day.activitiesHeart() == null || day.activitiesHeart().isEmpty()
                         ? null
@@ -67,7 +74,7 @@ public class HeartRateIntradayService {
                     .toList();
         }
 
-        FitbitActivitiesSummaryResponse activity = apiClient.getActivitiesSummaryForDay(token, dateIso);
+        FitbitActivitiesSummaryResponse activity = activityFuture.join();
         Integer caloriesOut = activity == null || activity.summary() == null ? null : activity.summary().caloriesOut();
         Integer activityCalories = activity == null || activity.summary() == null ? null : activity.summary().activityCalories();
 
@@ -75,16 +82,10 @@ public class HeartRateIntradayService {
     }
 
     private FitbitHeartIntradayResponse fetchIntradayWithFallback(FitbitTokenEntity token, String dateIso) {
-        if (intradayCache.containsKey(dateIso)) {
-            return intradayCache.get(dateIso);
-        }
-
         String knownLevel = bestDetailLevel.get(dateIso);
         if (knownLevel != null) {
             try {
-                FitbitHeartIntradayResponse r = apiClient.getHeartIntraday(token, dateIso, knownLevel);
-                intradayCache.put(dateIso, r);
-                return r;
+                return apiClient.getHeartIntraday(token, dateIso, knownLevel);
             } catch (FitbitRateLimitException e) {
                 log.warn("Rate limit hit while fetching intraday for {} with level {}. Retry-after: {}", dateIso, knownLevel, e.getRetryAfter());
                 throw e;
@@ -99,7 +100,6 @@ public class HeartRateIntradayService {
                 FitbitHeartIntradayResponse r = apiClient.getHeartIntraday(token, dateIso, level);
                 if (hasData(r)) {
                     bestDetailLevel.put(dateIso, level);
-                    intradayCache.put(dateIso, r);
                     return r;
                 }
             } catch (FitbitRateLimitException e) {

@@ -1,3 +1,5 @@
+import { fetchWithRetry } from "./fetchUtils";
+
 export type HeartRateIntradayDto = {
     date: string;
     restingHr: number | null;
@@ -9,9 +11,9 @@ export type HeartRateIntradayDto = {
     points: Array<{ time: string; bpm: number }>;
 };
 
-export async function fetchHeartRateIntraday(baseDate: string): Promise<HeartRateIntradayDto> {
+export async function fetchHeartRateIntraday(baseDate: string, signal?: AbortSignal): Promise<HeartRateIntradayDto> {
     const url = `/api/heartrate/intraday?baseDate=${encodeURIComponent(baseDate)}`;
-    const res = await fetch(url);
+    const res = await fetchWithRetry(url, { signal });
 
     if (!res.ok) {
         const text = await res.text().catch(() => "");

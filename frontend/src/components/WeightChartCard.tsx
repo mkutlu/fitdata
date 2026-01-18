@@ -30,17 +30,16 @@ export function WeightChartCard({ baseDate, range, onRangeChange }: Props) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        let alive = true;
+        const controller = new AbortController();
         setLoading(true);
         setError(null);
 
         (async () => {
             try {
-                const d = await fetchWeight(range, baseDate);
-                if (!alive) return;
+                const d = await fetchWeight(range, baseDate, controller.signal);
                 setData(d);
             } catch (e) {
-                if (!alive) return;
+                if (e instanceof Error && e.name === "AbortError") return;
                 setError(e instanceof Error ? e.message : "Unknown error");
             } finally {
                 setLoading(false);
@@ -48,7 +47,7 @@ export function WeightChartCard({ baseDate, range, onRangeChange }: Props) {
         })();
 
         return () => {
-            alive = false;
+            controller.abort();
         };
     }, [range, baseDate]);
 

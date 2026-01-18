@@ -1,3 +1,5 @@
+import { fetchWithRetry } from "./fetchUtils";
+
 export type ReadinessCardDto = {
     date: string;
     readinessScore: number | null;
@@ -10,9 +12,9 @@ export type ReadinessCardDto = {
     exerciseDays: number | null;
 };
 
-export async function fetchReadiness(baseDate: string): Promise<ReadinessCardDto> {
+export async function fetchReadiness(baseDate: string, signal?: AbortSignal): Promise<ReadinessCardDto> {
     const url = `/api/readiness?baseDate=${encodeURIComponent(baseDate)}`;
-    const res = await fetch(url);
+    const res = await fetchWithRetry(url, { signal });
 
     if (!res.ok) {
         const text = await res.text().catch(() => "");
