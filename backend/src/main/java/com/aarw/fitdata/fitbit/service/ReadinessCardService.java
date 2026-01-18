@@ -148,15 +148,29 @@ public class ReadinessCardService {
             // 1. RHR Delta
             HeartRateDayDto todayHr = todayHrFuture.join();
             Integer todayRhr = todayHr.restingHr();
-            if (todayRhr == null || todayRhr == 0) return null;
+
+            if (todayRhr == null || todayRhr == 0) {
+                // Try to find the most recent RHR if today's is missing
+                log.info("Today's RHR missing for {}, looking for recent data...", date);
+                todayRhr = last7DaysHrFuture.join().points().stream()
+                        .map(HeartRateRangeDto.Point::restingHr)
+                        .filter(r -> r != null && r > 0)
+                        .reduce((_, second) -> second) // Get last element
+                        .orElse(null);
+            }
+
+            if (todayRhr == null || todayRhr == 0) {
+                log.warn("Readiness estimation: No recent resting heart rate found for {}, score will be calculated with neutral RHR", date);
+                todayRhr = 0; // Will result in 0 delta if avgRhr also becomes 0
+            }
 
             double avgRhr = last7DaysHrFuture.join().points().stream()
                     .map(HeartRateRangeDto.Point::restingHr)
                     .filter(r -> r != null && r > 0)
                     .mapToInt(r -> r)
                     .average()
-                    .orElse(todayRhr);
-            int rhrDelta = (int) (todayRhr - avgRhr);
+                    .orElse(todayRhr > 0 ? todayRhr : 60); // Neutral fallback if everything is missing
+            int rhrDelta = todayRhr > 0 ? (int) (todayRhr - avgRhr) : 0;
 
             // 2. Sleep Trend
             SleepDto sleep = sleepFuture.join();
@@ -182,14 +196,33 @@ public class ReadinessCardService {
             // 4. HRV
             FitbitHrvResponse hrvToday = hrvTodayFuture.join();
             Double todayHrvValue = (hrvToday != null && hrvToday.hrv() != null && !hrvToday.hrv().isEmpty())
-                    ? hrvToday.hrv().getFirst().value().dailySample()
+                    ? hrvToday.hrv().stream()
+                        .filter(h -> h.value() != null)
+                        .map(h -> h.value().dailySample())
+                        .filter(v -> v != null && v > 0)
+                        .findFirst()
+                        .orElse(null)
                     : null;
+
+            if (todayHrvValue == null) {
+                log.info("Today's HRV missing for {}, looking for recent data...", date);
+                FitbitHrvResponse hrvRange = hrvRangeFuture.join();
+                todayHrvValue = (hrvRange != null && hrvRange.hrv() != null && !hrvRange.hrv().isEmpty())
+                        ? hrvRange.hrv().stream()
+                        .filter(r -> r.value() != null)
+                        .map(r -> r.value().dailySample())
+                        .filter(v -> v != null && v > 0)
+                        .reduce((_, second) -> second)
+                        .orElse(null)
+                        : null;
+            }
 
             double hrvPercentChange = 0.0;
             if (todayHrvValue != null) {
                 FitbitHrvResponse hrvRange = hrvRangeFuture.join();
                 double avgHrv = (hrvRange != null && hrvRange.hrv() != null && !hrvRange.hrv().isEmpty())
                         ? hrvRange.hrv().stream()
+                        .filter(r -> r.value() != null)
                         .map(r -> r.value().dailySample())
                         .filter(v -> v != null && v > 0)
                         .mapToDouble(Double::doubleValue)

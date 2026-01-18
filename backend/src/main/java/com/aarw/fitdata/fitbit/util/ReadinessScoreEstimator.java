@@ -53,6 +53,7 @@ public final class ReadinessScoreEstimator {
     }
 
     private static int scoreSleepTrend(SleepTrend trend) {
+        if (trend == null) return 10; // Neutral fallback
         return switch (trend) {
             case EXCELLENT -> 20;
             case GOOD -> 17;
