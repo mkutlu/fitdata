@@ -1,3 +1,4 @@
+import { fetchWithRetry } from "./fetchUtils";
 import type { StepsRange } from "./stepsApi";
 
 export type HeartRateDayDto = {
@@ -24,7 +25,7 @@ export type HeartRateRangeDto = {
 
 export async function fetchHeartRateDay(baseDate: string): Promise<HeartRateDayDto> {
     const url = `/api/heartrate?baseDate=${encodeURIComponent(baseDate)}`;
-    const res = await fetch(url);
+    const res = await fetchWithRetry(url);
 
     if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -36,7 +37,7 @@ export async function fetchHeartRateDay(baseDate: string): Promise<HeartRateDayD
 
 export async function fetchHeartRateRange(range: StepsRange, baseDate: string): Promise<HeartRateRangeDto> {
     const url = `/api/heartrate/range?range=${encodeURIComponent(range)}&baseDate=${encodeURIComponent(baseDate)}`;
-    const res = await fetch(url);
+    const res = await fetchWithRetry(url);
 
     if (!res.ok) {
         const text = await res.text().catch(() => "");
