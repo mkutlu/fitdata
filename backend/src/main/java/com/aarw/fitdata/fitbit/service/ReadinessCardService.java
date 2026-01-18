@@ -2,6 +2,7 @@ package com.aarw.fitdata.fitbit.service;
 
 import com.aarw.fitdata.dto.ReadinessCardDto;
 import com.aarw.fitdata.dto.HeartRateDayDto;
+import com.aarw.fitdata.dto.HeartRateRangeDto;
 import com.aarw.fitdata.dto.SleepDto;
 import com.aarw.fitdata.fitbit.FitbitApiClient;
 import com.aarw.fitdata.fitbit.dto.FitbitActivitiesSummaryResponse;
@@ -15,6 +16,9 @@ import com.aarw.fitdata.oauth.token.FitbitTokenService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class ReadinessCardService {
@@ -40,48 +44,72 @@ public class ReadinessCardService {
         var token = tokenService.getValidTokenOrThrow();
         String dateStr = date.toString();
 
-        // 1. Fetch VO2 Max (Cardio Fitness Score)
+        // 1. Fetch VO2 Max (Cardio Fitness Score) - ASYNC
+        CompletableFuture<FitbitVo2MaxResponse> vo2MaxFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                return apiClient.getVo2Max(token, dateStr);
+            } catch (Exception e) {
+                log.error("Error fetching VO2 Max for {}: {}", dateStr, e.getMessage());
+                return null;
+            }
+        });
+
+        // 2. Calculate Exercise Days (Current Week starting Monday) - ASYNC (partially)
+        CompletableFuture<Integer> exerciseDaysFuture = CompletableFuture.supplyAsync(() -> {
+            int exerciseDaysCount = 0;
+            try {
+                LocalDate current = date.with(java.time.DayOfWeek.MONDAY);
+                List<CompletableFuture<FitbitActivitiesSummaryResponse>> activityFutures = new ArrayList<>();
+                while (!current.isAfter(date)) {
+                    final String d = current.toString();
+                    activityFutures.add(CompletableFuture.supplyAsync(() -> apiClient.getActivitiesSummaryForDay(token, d)));
+                    current = current.plusDays(1);
+                }
+
+                for (var f : activityFutures) {
+                    try {
+                        FitbitActivitiesSummaryResponse summary = f.join();
+                        if (summary != null && summary.summary() != null) {
+                            if (summary.summary().activityCalories() != null && summary.summary().activityCalories() > 250) {
+                                exerciseDaysCount++;
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("Error fetching activity summary during exercise days calculation: {}", e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error calculating exercise days for {}: {}", dateStr, e.getMessage());
+            }
+            return exerciseDaysCount;
+        });
+
+        // 3. Estimate Readiness Score - ASYNC
+        CompletableFuture<Integer> readinessScoreFuture = CompletableFuture.supplyAsync(() -> estimateReadiness(date));
+
+        // Wait for all to complete
+        CompletableFuture.allOf(vo2MaxFuture, exerciseDaysFuture, readinessScoreFuture).join();
+
         Integer cardioScore = null;
         String vo2MaxText = null;
         try {
-            FitbitVo2MaxResponse vo2MaxRaw = apiClient.getVo2Max(token, dateStr);
+            FitbitVo2MaxResponse vo2MaxRaw = vo2MaxFuture.join();
             if (vo2MaxRaw != null && vo2MaxRaw.cardioscore() != null && !vo2MaxRaw.cardioscore().isEmpty()) {
                 var scoreVal = vo2MaxRaw.cardioscore().getFirst().value();
                 vo2MaxText = scoreVal.vo2Max();
-                try {
-                    if (vo2MaxText != null) {
-                        String[] parts = vo2MaxText.split("-");
-                        if (parts.length > 0) {
+                if (vo2MaxText != null) {
+                    String[] parts = vo2MaxText.split("-");
+                    if (parts.length > 0) {
+                        try {
                             cardioScore = Integer.parseInt(parts[0].trim());
-                        }
-                    }
-                } catch (NumberFormatException ignored) {}
-            }
-        } catch (Exception e) {
-            log.error("Error fetching VO2 Max for {}: {}", dateStr, e.getMessage());
-        }
-
-        // 2. Calculate Exercise Days (Current Week starting Monday)
-        int exerciseDaysCount = 0;
-        try {
-            // Loop from Monday until the selected date
-            LocalDate current = date.with(java.time.DayOfWeek.MONDAY);
-            while (!current.isAfter(date)) {
-                FitbitActivitiesSummaryResponse summary = apiClient.getActivitiesSummaryForDay(token, current.toString());
-                if (summary != null && summary.summary() != null) {
-                    // Consider a day as "Exercise Day" if activity calories > 250
-                    if (summary.summary().activityCalories() != null && summary.summary().activityCalories() > 250) {
-                        exerciseDaysCount++;
+                        } catch (NumberFormatException ignored) {}
                     }
                 }
-                current = current.plusDays(1);
             }
-        } catch (Exception e) {
-            log.error("Error calculating exercise days for {}: {}", dateStr, e.getMessage());
-        }
+        } catch (Exception ignored) {}
 
-        // 3. Estimate Readiness Score
-        Integer readinessScore = estimateReadiness(date);
+        int exerciseDaysCount = exerciseDaysFuture.join();
+        Integer readinessScore = readinessScoreFuture.join();
         String readinessStatus = "ESTIMATED";
 
         return new ReadinessCardDto(
@@ -99,23 +127,39 @@ public class ReadinessCardService {
 
     private Integer estimateReadiness(LocalDate date) {
         try {
+            var token = tokenService.getValidTokenOrThrow();
+
+            // Parallelize estimation inputs
+            CompletableFuture<HeartRateDayDto> todayHrFuture = CompletableFuture.supplyAsync(() -> heartRateService.getDay(date));
+            CompletableFuture<HeartRateRangeDto> last7DaysHrFuture = CompletableFuture.supplyAsync(() ->
+                    heartRateService.getRange(com.aarw.fitdata.fitbit.util.StepsRange.LAST_7_DAYS, date));
+            CompletableFuture<SleepDto> sleepFuture = CompletableFuture.supplyAsync(() -> sleepService.getSleep(date));
+            CompletableFuture<FitbitActivitiesSummaryResponse> activityFuture = CompletableFuture.supplyAsync(() ->
+                    apiClient.getActivitiesSummaryForDay(token, date.toString()));
+            CompletableFuture<FitbitHrvResponse> hrvTodayFuture = CompletableFuture.supplyAsync(() ->
+                    apiClient.getHrv(token, date.toString()));
+            CompletableFuture<FitbitHrvResponse> hrvRangeFuture = CompletableFuture.supplyAsync(() -> {
+                LocalDate start = date.minusDays(7);
+                return apiClient.getHrvRange(token, start.toString(), date.minusDays(1).toString());
+            });
+
+            CompletableFuture.allOf(todayHrFuture, last7DaysHrFuture, sleepFuture, activityFuture, hrvTodayFuture, hrvRangeFuture).join();
+
             // 1. RHR Delta
-            HeartRateDayDto todayHr = heartRateService.getDay(date);
+            HeartRateDayDto todayHr = todayHrFuture.join();
             Integer todayRhr = todayHr.restingHr();
             if (todayRhr == null || todayRhr == 0) return null;
 
-            // Get average RHR for last 7 days
-            double avgRhr = heartRateService.getRange(com.aarw.fitdata.fitbit.util.StepsRange.LAST_7_DAYS, date)
-                    .points().stream()
-                    .map(com.aarw.fitdata.dto.HeartRateRangeDto.Point::restingHr)
+            double avgRhr = last7DaysHrFuture.join().points().stream()
+                    .map(HeartRateRangeDto.Point::restingHr)
                     .filter(r -> r != null && r > 0)
-                    .mapToInt(Integer::intValue)
+                    .mapToInt(r -> r)
                     .average()
                     .orElse(todayRhr);
             int rhrDelta = (int) (todayRhr - avgRhr);
 
             // 2. Sleep Trend
-            SleepDto sleep = sleepService.getSleep(date);
+            SleepDto sleep = sleepFuture.join();
             Integer sleepScore = sleep.sleepScore();
             SleepTrend sleepTrend = null;
             if (sleepScore != null) {
@@ -126,8 +170,7 @@ public class ReadinessCardService {
             }
 
             // 3. Activity Load
-            var token = tokenService.getValidTokenOrThrow();
-            FitbitActivitiesSummaryResponse activity = apiClient.getActivitiesSummaryForDay(token, date.toString());
+            FitbitActivitiesSummaryResponse activity = activityFuture.join();
             int activeCals = (activity != null && activity.summary() != null) ? activity.summary().activityCalories() : 0;
             ActivityLoad activityLoad = ActivityLoad.REST;
 
@@ -137,15 +180,14 @@ public class ReadinessCardService {
             else if (activeCals > 200) activityLoad = ActivityLoad.LOW;
 
             // 4. HRV
-            FitbitHrvResponse hrvToday = apiClient.getHrv(token, date.toString());
+            FitbitHrvResponse hrvToday = hrvTodayFuture.join();
             Double todayHrvValue = (hrvToday != null && hrvToday.hrv() != null && !hrvToday.hrv().isEmpty())
                     ? hrvToday.hrv().getFirst().value().dailySample()
                     : null;
 
             double hrvPercentChange = 0.0;
             if (todayHrvValue != null) {
-                LocalDate start = date.minusDays(7);
-                FitbitHrvResponse hrvRange = apiClient.getHrvRange(token, start.toString(), date.minusDays(1).toString());
+                FitbitHrvResponse hrvRange = hrvRangeFuture.join();
                 double avgHrv = (hrvRange != null && hrvRange.hrv() != null && !hrvRange.hrv().isEmpty())
                         ? hrvRange.hrv().stream()
                         .map(r -> r.value().dailySample())
