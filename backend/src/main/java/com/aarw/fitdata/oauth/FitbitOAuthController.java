@@ -51,6 +51,7 @@ public class FitbitOAuthController {
             @org.springframework.web.bind.annotation.RequestHeader(value = "Referer", required = false) String referer,
             HttpSession session
     ) {
+        log.info("Fitbit OAuth start requested, session id={}", session.getId());
         if (props.clientId() == null || props.clientId().isBlank()) {
             return ResponseEntity.status(500).build();
         }
@@ -114,12 +115,16 @@ public class FitbitOAuthController {
             @org.springframework.web.bind.annotation.RequestParam String state,
             HttpSession session
     ) {
-        log.info("Callback received with state={}", state);
+        log.info("Callback received with state={}, session id={}", state, session.getId());
         String savedState = (String) session.getAttribute(SESSION_STATE);
         String verifier = (String) session.getAttribute(SESSION_VERIFIER);
 
         if (savedState == null || !savedState.equals(state) || verifier == null) {
-            log.error("OAuth callback state mismatch or missing verifier. savedState={}, receivedState={}", savedState, state);
+            log.error("OAuth callback failure: savedState={}, receivedState={}, verifierPresent={}", 
+                    savedState, state, (verifier != null));
+            if (savedState == null && verifier == null) {
+                log.error("Session appears to be NEW or LOST. No OAuth attributes found in session id={}", session.getId());
+            }
             return ResponseEntity.status(400).build();
         }
 
