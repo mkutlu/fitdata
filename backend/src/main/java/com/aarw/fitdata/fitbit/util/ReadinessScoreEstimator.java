@@ -10,69 +10,146 @@ public final class ReadinessScoreEstimator {
 
     private ReadinessScoreEstimator() {}
 
+    /* ============================================================
+       Public API
+       ============================================================ */
+
     public static int estimate(ReadinessInputs in) {
 
-        int hrvScore = scoreHrv(in.hrvPercentChange());
-        int rhrScore = scoreRhr(in.rhrDeltaBpm());
-        int sleepScore = scoreSleepTrend(in.sleepTrend());
-        int strainPenalty = scoreStrain(in.activityLoad());
+        int ceiling = readinessCeiling(in.hrvPercentChange());
+        int base = baseScore(in.hrvPercentChange());
 
-        int raw = hrvScore + rhrScore + sleepScore + strainPenalty + 10;
-        int finalScore = clamp(raw);
+        int sleepAdj = sleepAdjustment(in.sleepTrend());
+        int rhrAdj = rhrAdjustment(in.rhrDeltaBpm());
+        int strainAdj = strainPenalty(in.activityLoad());
+
+        int raw = base + sleepAdj + rhrAdj + strainAdj;
+
+        // Fitbit behaviour: HRV defines the maximum possible score
+        int capped = Math.min(raw, ceiling);
+        int finalScore = clamp(capped);
 
         log.info("""
-            Readiness calculated:
-              HRV score       = {}
-              RHR score       = {}
-              Sleep score     = {}
-              Strain penalty  = {}
-              Raw score       = {}
-              Final score     = {}
+            Readiness v3 calculation
+            -------------------------
+            HRV % change      : {}
+            HRV ceiling       : {}
+            Base score        : {}
+            Sleep adjustment  : {}
+            RHR adjustment    : {}
+            Strain penalty    : {}
+            Raw score         : {}
+            Final score       : {}
             """,
-                hrvScore, rhrScore, sleepScore, strainPenalty, raw, finalScore
+                in.hrvPercentChange(),
+                ceiling,
+                base,
+                sleepAdj,
+                rhrAdj,
+                strainAdj,
+                raw,
+                finalScore
         );
 
         return finalScore;
     }
 
-    /* ---------------- Components ---------------- */
+    /* ============================================================
+       HRV → score ceiling (most important rule)
+       ============================================================ */
 
-    private static int scoreHrv(double percent) {
-        return percent >= 25 ? 40 :
-                percent >= 15 ? 34 :
-                        percent >= 5  ? 28 :
-                                percent >= -5 ? 22 : 15;
+    private static int readinessCeiling(double hrvPct) {
+        if (hrvPct >= 20) return 100;
+        if (hrvPct >= 10) return 85;
+        if (hrvPct >= 5)  return 75;
+        if (hrvPct >= -5) return 70;   // "About usual"
+        return 60;
     }
 
-    private static int scoreRhr(int delta) {
-        return delta <= -4 ? 25 :
-                delta == -3 ? 23 :
-                        delta == -2 ? 21 :
-                                delta == -1 ? 18 :
-                                        delta == 0  ? 15 : 10;
+    /* ============================================================
+       HRV → base score
+       ============================================================ */
+
+    private static int baseScore(double hrvPct) {
+        if (hrvPct >= 20) return 88;
+        if (hrvPct >= 10) return 75;
+        if (hrvPct >= 5)  return 68;
+        if (hrvPct >= -5) return 65;
+        return 55;
     }
 
-    private static int scoreSleepTrend(SleepTrend trend) {
-        if (trend == null) return 10; // Neutral fallback
+    /* ============================================================
+       Sleep trend (minor trim, never dominant)
+       ============================================================ */
+
+    private static int sleepAdjustment(SleepTrend trend) {
+        if (trend == null) return 0;
         return switch (trend) {
-            case EXCELLENT -> 20;
-            case GOOD -> 17;
-            case FAIR -> 13;
-            case POOR -> 8;
+            case EXCELLENT -> +4;
+            case GOOD -> +2;
+            case FAIR -> -3;
+            case POOR -> -7;
         };
     }
 
-    private static int scoreStrain(ActivityLoad load) {
+    /* ============================================================
+       Resting heart rate (fine tuning)
+       ============================================================ */
+
+    private static int rhrAdjustment(int delta) {
+        if (delta <= -3) return +4;
+        if (delta == -2) return +3;
+        if (delta == -1) return +1;
+        if (delta == 0) return 0;
+        return -3;
+    }
+
+    /* ============================================================
+       Activity load / strain (strong penalty)
+       ============================================================ */
+
+    private static int strainPenalty(ActivityLoad load) {
+        if (load == null) return 0;
         return switch (load) {
             case REST -> 0;
             case LOW -> -3;
-            case MODERATE -> -5;
-            case HIGH -> -10;
-            case VERY_HIGH -> -15;
+            case MODERATE -> -8;
+            case HIGH -> -15;
+            case VERY_HIGH -> -22;
         };
     }
 
+    /* ============================================================
+       Utilities
+       ============================================================ */
+
     private static int clamp(int v) {
         return Math.max(1, Math.min(100, v));
+    }
+
+    /* ============================================================
+       Supporting types
+       ============================================================ */
+
+    public record ReadinessInputs(
+            double hrvPercentChange,
+            int rhrDeltaBpm,
+            SleepTrend sleepTrend,
+            ActivityLoad activityLoad
+    ) {}
+
+    public enum SleepTrend {
+        EXCELLENT,
+        GOOD,
+        FAIR,
+        POOR
+    }
+
+    public enum ActivityLoad {
+        REST,
+        LOW,
+        MODERATE,
+        HIGH,
+        VERY_HIGH
     }
 }
