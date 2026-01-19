@@ -44,13 +44,15 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Allow all origins for now to solve the user's issue, 
-        // but in production it's better to restrict to the frontend URL
+        // Use a more specific list of origins if possible, but "*" with allowCredentials(true) 
+        // is not allowed in many browsers/Spring versions.
+        // We use setAllowedOriginPatterns instead.
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Set-Cookie"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L); // Add MaxAge for preflight caching
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
