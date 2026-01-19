@@ -72,4 +72,28 @@ class ReadinessReproductionTest {
         assertTrue(result.readinessScore() > 0, "Readiness score should be a positive number (neutral calculation)");
         assertEquals("ESTIMATED", result.readinessStatus());
     }
+
+    @Test
+    void testReadinessEstimation_WithApiException_ReturnsValidScore() {
+        LocalDate today = LocalDate.now();
+
+        // Simulate an exception in one of the services
+        when(heartRateService.getDay(today)).thenThrow(new RuntimeException("API Down"));
+        
+        // Other services return valid data
+        when(heartRateService.getRange(any(), eq(today))).thenReturn(new HeartRateRangeDto("LAST_7_DAYS", today.minusDays(7), today, List.of()));
+        when(apiClient.getVo2Max(any(), eq(today.toString()))).thenReturn(new FitbitVo2MaxResponse(Collections.emptyList()));
+        when(apiClient.getActivitiesSummaryForDay(any(), eq(today.toString()))).thenReturn(new FitbitActivitiesSummaryResponse(new FitbitActivitiesSummaryResponse.Summary(0, 0)));
+        when(sleepService.getSleep(today)).thenReturn(new SleepDto(today.toString(), 0, 0, null, null, null, null, List.of()));
+        when(apiClient.getHrv(any(), eq(today.toString()))).thenReturn(new FitbitHrvResponse(List.of()));
+        when(apiClient.getHrvRange(any(), any(), any())).thenReturn(new FitbitHrvResponse(List.of()));
+
+        // Act
+        ReadinessCardDto result = service.getReadinessCard(today);
+
+        // Assert
+        assertNotNull(result);
+        assertNotNull(result.readinessScore(), "Readiness score should not be null even if an API call fails");
+        assertTrue(result.readinessScore() > 0, "Readiness score should be a positive number (neutral fallback)");
+    }
 }

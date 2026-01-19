@@ -111,11 +111,25 @@ public class FitbitOAuthController {
 
     @GetMapping("/oauth/fitbit/callback")
     public ResponseEntity<Void> callback(
-            @org.springframework.web.bind.annotation.RequestParam String code,
-            @org.springframework.web.bind.annotation.RequestParam String state,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String code,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String state,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String error,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String error_description,
             HttpSession session
     ) {
-        log.info("Callback received with state={}, session id={}", state, session.getId());
+        log.info("Callback received. code={}, state={}, error={}, error_description={}, session id={}", 
+                (code != null ? "PRESENT" : "MISSING"), state, error, error_description, session.getId());
+
+        if (error != null) {
+            log.error("Fitbit returned error: {} - {}", error, error_description);
+            return ResponseEntity.status(400).build();
+        }
+
+        if (code == null || state == null) {
+            log.error("Missing code or state in callback");
+            return ResponseEntity.status(400).build();
+        }
+
         String savedState = (String) session.getAttribute(SESSION_STATE);
         String verifier = (String) session.getAttribute(SESSION_VERIFIER);
 
@@ -123,7 +137,8 @@ public class FitbitOAuthController {
             log.error("OAuth callback failure: savedState={}, receivedState={}, verifierPresent={}", 
                     savedState, state, (verifier != null));
             if (savedState == null && verifier == null) {
-                log.error("Session appears to be NEW or LOST. No OAuth attributes found in session id={}", session.getId());
+                log.error("Session appears to be NEW or LOST. No OAuth attributes found in session id={}. Check if JSESSIONID cookie was sent by browser. Request URL: {}, Callback URL: {}", 
+                        session.getId(), props.authorizeUri(), props.redirectUri());
             }
             return ResponseEntity.status(400).build();
         }

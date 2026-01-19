@@ -50,8 +50,11 @@ public class ReadinessCardService {
                 return apiClient.getVo2Max(token, dateStr);
             } catch (Exception e) {
                 log.error("Error fetching VO2 Max for {}: {}", dateStr, e.getMessage());
-                return null;
+                return new FitbitVo2MaxResponse(java.util.Collections.emptyList());
             }
+        }).exceptionally(e -> {
+            log.error("Unexpected error fetching VO2 Max for {}: {}", dateStr, e.getMessage());
+            return new FitbitVo2MaxResponse(java.util.Collections.emptyList());
         });
 
         // 2. Calculate Exercise Days (Current Week starting Monday) - ASYNC (partially)
@@ -70,7 +73,8 @@ public class ReadinessCardService {
                     try {
                         FitbitActivitiesSummaryResponse summary = f.join();
                         if (summary != null && summary.summary() != null) {
-                            if (summary.summary().activityCalories() != null && summary.summary().activityCalories() > 250) {
+                            Integer calories = summary.summary().activityCalories();
+                            if (calories != null && calories > 250) {
                                 exerciseDaysCount++;
                             }
                         }
@@ -82,10 +86,17 @@ public class ReadinessCardService {
                 log.error("Error calculating exercise days for {}: {}", dateStr, e.getMessage());
             }
             return exerciseDaysCount;
+        }).exceptionally(e -> {
+            log.error("Unexpected error calculating exercise days for {}: {}", dateStr, e.getMessage());
+            return 0;
         });
 
         // 3. Estimate Readiness Score - ASYNC
-        CompletableFuture<Integer> readinessScoreFuture = CompletableFuture.supplyAsync(() -> estimateReadiness(date));
+        CompletableFuture<Integer> readinessScoreFuture = CompletableFuture.supplyAsync(() -> estimateReadiness(date))
+                .exceptionally(e -> {
+                    log.error("Unexpected error estimating readiness for {}: {}", dateStr, e.getMessage());
+                    return 0;
+                });
 
         // Wait for all to complete
         CompletableFuture.allOf(vo2MaxFuture, exerciseDaysFuture, readinessScoreFuture).join();
@@ -130,17 +141,40 @@ public class ReadinessCardService {
             var token = tokenService.getValidTokenOrThrow();
 
             // Parallelize estimation inputs
-            CompletableFuture<HeartRateDayDto> todayHrFuture = CompletableFuture.supplyAsync(() -> heartRateService.getDay(date));
+            CompletableFuture<HeartRateDayDto> todayHrFuture = CompletableFuture.supplyAsync(() -> heartRateService.getDay(date))
+                    .exceptionally(e -> {
+                        log.error("Error fetching today's HR for {}: {}", date, e.getMessage());
+                        return new HeartRateDayDto(date, null, null);
+                    });
             CompletableFuture<HeartRateRangeDto> last7DaysHrFuture = CompletableFuture.supplyAsync(() ->
-                    heartRateService.getRange(com.aarw.fitdata.fitbit.util.StepsRange.LAST_7_DAYS, date));
-            CompletableFuture<SleepDto> sleepFuture = CompletableFuture.supplyAsync(() -> sleepService.getSleep(date));
+                    heartRateService.getRange(com.aarw.fitdata.fitbit.util.StepsRange.LAST_7_DAYS, date))
+                    .exceptionally(e -> {
+                        log.error("Error fetching 7-day HR range for {}: {}", date, e.getMessage());
+                        return new HeartRateRangeDto("LAST_7_DAYS", date.minusDays(7), date, List.of());
+                    });
+            CompletableFuture<SleepDto> sleepFuture = CompletableFuture.supplyAsync(() -> sleepService.getSleep(date))
+                    .exceptionally(e -> {
+                        log.error("Error fetching sleep for {}: {}", date, e.getMessage());
+                        return new SleepDto(date.toString(), 0, 0, null, null, null, null, List.of());
+                    });
             CompletableFuture<FitbitActivitiesSummaryResponse> activityFuture = CompletableFuture.supplyAsync(() ->
-                    apiClient.getActivitiesSummaryForDay(token, date.toString()));
+                    apiClient.getActivitiesSummaryForDay(token, date.toString()))
+                    .exceptionally(e -> {
+                        log.error("Error fetching activities for {}: {}", date, e.getMessage());
+                        return null;
+                    });
             CompletableFuture<FitbitHrvResponse> hrvTodayFuture = CompletableFuture.supplyAsync(() ->
-                    apiClient.getHrv(token, date.toString()));
+                    apiClient.getHrv(token, date.toString()))
+                    .exceptionally(e -> {
+                        log.error("Error fetching today's HRV for {}: {}", date, e.getMessage());
+                        return new FitbitHrvResponse(List.of());
+                    });
             CompletableFuture<FitbitHrvResponse> hrvRangeFuture = CompletableFuture.supplyAsync(() -> {
                 LocalDate start = date.minusDays(7);
                 return apiClient.getHrvRange(token, start.toString(), date.minusDays(1).toString());
+            }).exceptionally(e -> {
+                log.error("Error fetching HRV range for {}: {}", date, e.getMessage());
+                return new FitbitHrvResponse(List.of());
             });
 
             CompletableFuture.allOf(todayHrFuture, last7DaysHrFuture, sleepFuture, activityFuture, hrvTodayFuture, hrvRangeFuture).join();
@@ -149,28 +183,28 @@ public class ReadinessCardService {
             HeartRateDayDto todayHr = todayHrFuture.join();
             Integer todayRhr = todayHr.restingHr();
 
+            HeartRateRangeDto rangeHr = last7DaysHrFuture.join();
+            List<HeartRateRangeDto.Point> rhrPoints = rangeHr.points().stream()
+                    .filter(p -> p.restingHr() != null && p.restingHr() > 0)
+                    .toList();
+
             if (todayRhr == null || todayRhr == 0) {
                 // Try to find the most recent RHR if today's is missing
                 log.info("Today's RHR missing for {}, looking for recent data...", date);
-                todayRhr = last7DaysHrFuture.join().points().stream()
-                        .map(HeartRateRangeDto.Point::restingHr)
-                        .filter(r -> r != null && r > 0)
-                        .reduce((_, second) -> second) // Get last element
-                        .orElse(null);
+                todayRhr = rhrPoints.isEmpty() ? null : rhrPoints.getLast().restingHr();
             }
+
+            double avgRhr = rhrPoints.stream()
+                    .mapToInt(HeartRateRangeDto.Point::restingHr)
+                    .average()
+                    .orElse(todayRhr != null && todayRhr > 0 ? todayRhr : 60);
 
             if (todayRhr == null || todayRhr == 0) {
-                log.warn("Readiness estimation: No recent resting heart rate found for {}, score will be calculated with neutral RHR", date);
-                todayRhr = 0; // Will result in 0 delta if avgRhr also becomes 0
+                log.warn("Readiness estimation: No recent resting heart rate found for {}, using average as today's RHR", date);
+                todayRhr = (int) avgRhr;
             }
 
-            double avgRhr = last7DaysHrFuture.join().points().stream()
-                    .map(HeartRateRangeDto.Point::restingHr)
-                    .filter(r -> r != null && r > 0)
-                    .mapToInt(r -> r)
-                    .average()
-                    .orElse(todayRhr > 0 ? todayRhr : 60); // Neutral fallback if everything is missing
-            int rhrDelta = todayRhr > 0 ? (int) (todayRhr - avgRhr) : 0;
+            int rhrDelta = todayRhr - (int) avgRhr;
 
             // 2. Sleep Trend
             SleepDto sleep = sleepFuture.join();
@@ -185,7 +219,8 @@ public class ReadinessCardService {
 
             // 3. Activity Load
             FitbitActivitiesSummaryResponse activity = activityFuture.join();
-            int activeCals = (activity != null && activity.summary() != null) ? activity.summary().activityCalories() : 0;
+            int activeCals = (activity != null && activity.summary() != null && activity.summary().activityCalories() != null) 
+                    ? activity.summary().activityCalories() : 0;
             ActivityLoad activityLoad = ActivityLoad.REST;
 
             if (activeCals > 1500) activityLoad = ActivityLoad.VERY_HIGH;
@@ -204,40 +239,38 @@ public class ReadinessCardService {
                         .orElse(null)
                     : null;
 
+            FitbitHrvResponse hrvRange = hrvRangeFuture.join();
+            List<Double> hrvPoints = (hrvRange != null && hrvRange.hrv() != null)
+                    ? hrvRange.hrv().stream()
+                        .filter(r -> r.value() != null && r.value().dailySample() != null && r.value().dailySample() > 0)
+                        .map(r -> r.value().dailySample())
+                        .toList()
+                    : List.of();
+
             if (todayHrvValue == null) {
                 log.info("Today's HRV missing for {}, looking for recent data...", date);
-                FitbitHrvResponse hrvRange = hrvRangeFuture.join();
-                todayHrvValue = (hrvRange != null && hrvRange.hrv() != null && !hrvRange.hrv().isEmpty())
-                        ? hrvRange.hrv().stream()
-                        .filter(r -> r.value() != null)
-                        .map(r -> r.value().dailySample())
-                        .filter(v -> v != null && v > 0)
-                        .reduce((_, second) -> second)
-                        .orElse(null)
-                        : null;
+                todayHrvValue = hrvPoints.isEmpty() ? null : hrvPoints.getLast();
             }
 
-            double hrvPercentChange = 0.0;
-            if (todayHrvValue != null) {
-                FitbitHrvResponse hrvRange = hrvRangeFuture.join();
-                double avgHrv = (hrvRange != null && hrvRange.hrv() != null && !hrvRange.hrv().isEmpty())
-                        ? hrvRange.hrv().stream()
-                        .filter(r -> r.value() != null)
-                        .map(r -> r.value().dailySample())
-                        .filter(v -> v != null && v > 0)
-                        .mapToDouble(Double::doubleValue)
-                        .average()
-                        .orElse(todayHrvValue)
-                        : todayHrvValue;
+            double avgHrv = hrvPoints.stream()
+                    .mapToDouble(Double::doubleValue)
+                    .average()
+                    .orElse(todayHrvValue != null ? todayHrvValue : 50.0);
 
-                hrvPercentChange = ((todayHrvValue - avgHrv) / avgHrv) * 100.0;
+            if (todayHrvValue == null) {
+                log.warn("Readiness estimation: No recent HRV found for {}, using average", date);
+                todayHrvValue = avgHrv;
             }
+
+            double hrvPercentChange = ((todayHrvValue - avgHrv) / Math.max(1.0, avgHrv)) * 100.0;
 
             ReadinessInputs inputs = new ReadinessInputs(hrvPercentChange, rhrDelta, sleepTrend, activityLoad);
-            return ReadinessScoreEstimator.estimate(inputs);
+            Integer score = ReadinessScoreEstimator.estimate(inputs);
+            log.debug("Readiness score estimated for {}: {}", date, score);
+            return score;
         } catch (Exception e) {
-            log.error("Failed to estimate readiness for {}: {}", date, e.getMessage());
-            return null;
+            log.error("CRITICAL: Failed to estimate readiness for {}: {}", date, e.getMessage(), e);
+            return 0; // Return 0 instead of null to avoid frontend issues, though 1 is the minimum in clamp
         }
     }
 }
