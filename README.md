@@ -6,12 +6,15 @@ Fitdata is a modern health data visualization dashboard designed to provide deep
 
 - **Daily Readiness Score**: Get an estimated readiness score based on your Resting Heart Rate (RHR), Sleep Quality, Activity Load, and Heart Rate Variability (HRV).
 - **Weekly Exercise Tracking**: Monitor your consistency with a "Current Week" view of your exercise frequency.
-- **Advanced Heart Rate Analytics**:
-    - **Intraday Tracking**: High-resolution view of your heart rate throughout the day.
-    - **Zone Analysis**: Detailed breakdown of time spent in Fat Burn, Cardio, and Peak zones.
-    - **Energy Expenditure**: Track calories burned and activity intensity.
-- **Sleep Quality Insights**: Visualize sleep stages and overall sleep efficiency.
-- **Activity & Weight Metrics**: Comprehensive charts for steps and body weight trends with flexible time ranges.
+- **Advanced Heart Rate Analytics**: 
+    Gain deep insights into your cardiovascular health with high-resolution intraday tracking. Monitor your time spent in Fat Burn, Cardio, and Peak zones to optimize your workouts.
+    ![Heart Rate Analytics](frontend/src/assets/hr-chart.png)
+- **Sleep Quality Insights**: 
+    Understand your rest better. Visualize your sleep stages (Deep, Light, REM) and track your overall sleep efficiency to improve your recovery.
+    ![Sleep Analysis](frontend/src/assets/sleep-chart.png)
+- **Activity & Weight Metrics**: 
+    Keep track of your physical progress with comprehensive charts for daily steps and body weight trends. Use flexible time ranges to see your long-term improvements.
+    ![Steps and Weight Trends](frontend/src/assets/daily-steps-weight.png)
 - **Responsive Dashboard**: A fully customizable and responsive grid layout that adapts to any screen size.
 
 ## Tech Stack
