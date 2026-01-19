@@ -95,3 +95,49 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+@media print {
+    .no-print,
+    .drag-handle,
+    button,
+    .pointer-events-none {
+        display: none !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+    }
+
+    main {
+        background: white !important;
+        color: black !important;
+        padding: 0 !important;
+    }
+
+    .relative {
+        position: static !important;
+    }
+
+    /* Force background colors to print if needed */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Ensure the grid layout doesn't break on print */
+    .react-grid-layout {
+        height: auto !important;
+    }
+
+    .react-grid-item {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        width: 100% !important;
+        height: auto !important;
+        margin-bottom: 20px !important;
+        transform: none !important;
+        page-break-inside: avoid;
+    }
+}

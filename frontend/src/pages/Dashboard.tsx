@@ -229,6 +229,10 @@ export function Dashboard() {
         }
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
     return (
         <main className="min-h-screen text-slate-100 bg-slate-950">
             <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(1400px_circle_at_15%_0%,rgba(56,189,248,0.14),transparent_58%),radial-gradient(1100px_circle_at_85%_20%,rgba(99,102,241,0.12),transparent_58%)]" />
@@ -241,6 +245,19 @@ export function Dashboard() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 items-center">
+                        {isAuthenticated && (
+                            <button
+                                onClick={handlePrint}
+                                title="Print Dashboard"
+                                className="mr-1 rounded-xl border border-slate-800 bg-slate-900/50 p-2 text-slate-300 hover:bg-slate-800 hover:text-sky-400 transition-all no-print"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                    <rect x="6" y="14" width="12" height="8"></rect>
+                                </svg>
+                            </button>
+                        )}
                         <HeaderChip label="Data source" value="Fitbit" />
                         <HeaderChip label="View" value="Overview" />
                         {!loading && (
@@ -269,7 +286,7 @@ export function Dashboard() {
 
                 {!loading && isAuthenticated && profile && (
                     <>
-                        <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center">
+                        <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center no-print">
                             <div className="order-2 lg:order-1 lg:col-span-6">
                                 <DateBarCompact selectedDate={selectedDate} readableDate={readableDate} onChange={setSelectedDate} />
                             </div>
