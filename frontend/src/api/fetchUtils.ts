@@ -22,7 +22,7 @@ export async function fetchWithRetry(url: string, options: RequestInit = {}, ret
     }
 
     const isStatusCheck = url.includes("/oauth/fitbit/status");
-    const timeout = isStatusCheck ? 30000 : 30000; 
+    const timeout = isStatusCheck ? 5000 : 30000; 
     
     const controller = new AbortController();
     const id = setTimeout(() => {

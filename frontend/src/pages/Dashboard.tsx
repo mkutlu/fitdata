@@ -196,8 +196,10 @@ export function Dashboard() {
                     setLayouts(JSON.parse(JSON.stringify(defaultLayouts)));
                 } else {
                     // It's likely a timeout or server error. 
-                    // We don't change isAuthenticated, keeping current (probably false) but showing error.
-                    setError("Unable to connect to service. Please check your connection or refresh. " + errorMessage);
+                    // We don't change isAuthenticated, keeping current (false) but NOT showing error
+                    // so the page is not blocked and user can see the login button.
+                    setIsAuthenticated(false);
+                    console.error("Status check failed or timed out:", errorMessage);
                 }
             } finally {
                 setLoading(false);
