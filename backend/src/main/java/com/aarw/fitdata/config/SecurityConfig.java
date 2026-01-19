@@ -15,6 +15,7 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/.env", "/.git/**", "/wp-login.php", "/admin/**").denyAll()
                         .requestMatchers("/oauth/fitbit/**", "/actuator/health", "/actuator/info").permitAll()

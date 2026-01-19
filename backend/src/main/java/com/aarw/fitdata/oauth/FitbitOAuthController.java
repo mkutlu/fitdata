@@ -91,6 +91,7 @@ public class FitbitOAuthController {
     public ResponseEntity<AuthStatusResponse> status() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         boolean authenticated = auth != null && auth.isAuthenticated() && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken);
+        log.debug("Fitbit status check: authenticated={}", authenticated);
         return ResponseEntity.ok(new AuthStatusResponse(authenticated));
     }
 
