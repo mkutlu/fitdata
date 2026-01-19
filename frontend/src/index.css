@@ -105,13 +105,15 @@ button:focus-visible {
         display: none !important;
     }
 
-    body {
+    html, body {
         background: white !important;
         color: black !important;
         width: 100% !important;
+        height: auto !important;
         margin: 0 !important;
         padding: 0 !important;
         display: block !important;
+        overflow: visible !important;
     }
 
     main {
@@ -120,23 +122,29 @@ button:focus-visible {
         padding: 0 !important;
         width: 100% !important;
         min-height: auto !important;
+        display: block !important;
+        overflow: visible !important;
+    }
+
+    /* Prevent any element from having scrollbars or being clipped in print */
+    * {
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 
     /* Override the max-width on the container in Dashboard.tsx */
-    .relative.mx-auto.w-full.max-w-\[1520px\] {
+    [class*="max-w-[1520px]"] {
         max-width: 100% !important;
-        padding-left: 10mm !important;
-        padding-right: 10mm !important;
+        width: 100% !important;
+        padding-left: 5mm !important;
+        padding-right: 5mm !important;
+        margin: 0 !important;
     }
 
-    .relative {
+    /* Only reset position on main containers, preserve for cards and components */
+    main .relative.mx-auto {
         position: static !important;
-    }
-
-    /* Force background colors to print if needed */
-    * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
     }
 
     /* Ensure the grid layout doesn't break on print */
@@ -150,15 +158,41 @@ button:focus-visible {
         top: auto !important;
         left: auto !important;
         width: 100% !important;
-        height: 400px !important; /* Fixed height for charts in print */
-        margin-bottom: 30px !important;
+        height: auto !important;
+        min-height: 400px !important;
+        margin-bottom: 50px !important;
         transform: none !important;
         page-break-inside: avoid;
         display: block !important;
+        overflow: visible !important;
     }
 
-    /* Reduce padding in cards for print to save space */
+    .react-grid-item > div {
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    /* Force height for chart containers so Recharts can render */
+    .react-grid-item .flex-1.min-h-0,
+    .recharts-responsive-container {
+        height: 350px !important;
+        min-height: 350px !important;
+        width: 100% !important;
+        display: block !important;
+    }
+
+    /* ReadinessCard specific fix */
+    .react-grid-item svg {
+        max-width: 400px !important;
+        max-height: 400px !important;
+        margin: 0 auto !important;
+    }
+
+    /* Reduce padding and shadows in cards for print */
     .react-grid-item > div > div {
         padding: 1rem !important;
+        border: 1px solid #e2e8f0 !important; /* slate-200 for print */
+        background: white !important;
+        box-shadow: none !important;
     }
 }
