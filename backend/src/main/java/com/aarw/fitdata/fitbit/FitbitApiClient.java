@@ -322,6 +322,7 @@ public class FitbitApiClient {
                             resp.bodyToMono(String.class).defaultIfEmpty("")
                                     .flatMap(body -> {
                                         if (resp.statusCode().value() == 404) {
+                                            log.debug("Fitbit HRV API 404 for date {}", date);
                                             return Mono.empty();
                                         }
                                         log.error("Fitbit HRV API error for date {}: HTTP {} body={}", date, resp.statusCode(), body);
@@ -363,6 +364,7 @@ public class FitbitApiClient {
                             resp.bodyToMono(String.class).defaultIfEmpty("")
                                     .flatMap(body -> {
                                         if (resp.statusCode().value() == 404) {
+                                            log.debug("Fitbit HRV Range API 404 for {} to {}", startDate, endDate);
                                             return Mono.empty();
                                         }
                                         log.error("Fitbit HRV Range API error for {} to {}: HTTP {} body={}", startDate, endDate, resp.statusCode(), body);

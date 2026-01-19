@@ -168,7 +168,7 @@ public class ReadinessCardService {
                         return new FitbitHrvResponse(List.of());
                     });
             CompletableFuture<FitbitHrvResponse> hrvRangeFuture = CompletableFuture.supplyAsync(() -> {
-                LocalDate start = date.minusDays(7);
+                LocalDate start = date.minusDays(14);
                 return apiClient.getHrvRange(token, start.toString(), date.minusDays(1).toString());
             }).exceptionally(e -> {
                 log.error("Error fetching HRV range for {}: {}", date, e.getMessage());
@@ -228,6 +228,11 @@ public class ReadinessCardService {
 
             // 4. HRV
             FitbitHrvResponse hrvToday = hrvTodayFuture.join();
+            if (hrvToday != null && hrvToday.hrv() != null) {
+                log.debug("Today's HRV records count: {}", hrvToday.hrv().size());
+                hrvToday.hrv().forEach(h -> log.debug("HRV Record: date={}, value={}", h.dateTime(), h.value()));
+            }
+
             Double todayHrvValue = (hrvToday != null && hrvToday.hrv() != null && !hrvToday.hrv().isEmpty())
                     ? hrvToday.hrv().stream()
                         .filter(h -> h.value() != null)
@@ -238,6 +243,10 @@ public class ReadinessCardService {
                     : null;
 
             FitbitHrvResponse hrvRange = hrvRangeFuture.join();
+            if (hrvRange != null && hrvRange.hrv() != null) {
+                log.debug("HRV Range records count: {}", hrvRange.hrv().size());
+            }
+
             List<Double> hrvPoints = (hrvRange != null && hrvRange.hrv() != null)
                     ? hrvRange.hrv().stream()
                         .filter(r -> r.value() != null && r.value().dailySample() != null && r.value().dailySample() > 0)
@@ -246,7 +255,7 @@ public class ReadinessCardService {
                     : List.of();
 
             if (todayHrvValue == null) {
-                log.info("Today's HRV missing for {}, looking for recent data...", date);
+                log.info("Today's HRV missing for {}, looking for recent data in {} records...", date, hrvPoints.size());
                 todayHrvValue = hrvPoints.isEmpty() ? null : hrvPoints.getLast();
             }
 
