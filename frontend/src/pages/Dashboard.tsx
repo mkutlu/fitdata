@@ -210,7 +210,10 @@ export function Dashboard() {
     }, []);
 
     const handleLogin = () => {
-        window.location.href = "/oauth/fitbit/start";
+        const API_BASE_URL = (window as any).ENV?.VITE_API_BASE_URL !== "__VITE_API_BASE_URL__"
+            ? (window as any).ENV?.VITE_API_BASE_URL
+            : (import.meta.env.VITE_API_BASE_URL || "");
+        window.location.href = `${API_BASE_URL}/oauth/fitbit/start`;
     };
 
     const handleLogout = async () => {

@@ -22,9 +22,11 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED)
+                        .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.ALWAYS)
                 )
-                .requestCache(org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer::disable)
+                .requestCache(requestCache -> requestCache
+                        .requestCache(new org.springframework.security.web.savedrequest.NullRequestCache())
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/.env", "/.git/**", "/wp-login.php", "/admin/**").denyAll()
                         .requestMatchers("/oauth/fitbit/start", "/oauth/fitbit/callback", "/oauth/fitbit/status", "/actuator/health", "/actuator/info").permitAll()
