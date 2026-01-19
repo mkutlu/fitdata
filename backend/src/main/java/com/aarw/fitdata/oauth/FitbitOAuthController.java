@@ -89,9 +89,16 @@ public class FitbitOAuthController {
 
     @GetMapping("/oauth/fitbit/status")
     public ResponseEntity<AuthStatusResponse> status() {
+        log.info("Fitbit status check RECEIVED");
+        long start = System.currentTimeMillis();
         var auth = SecurityContextHolder.getContext().getAuthentication();
         boolean authenticated = auth != null && auth.isAuthenticated() && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken);
-        log.debug("Fitbit status check: authenticated={}", authenticated);
+        long duration = System.currentTimeMillis() - start;
+        if (duration > 500) {
+            log.warn("Fitbit status check was SLOW: authenticated={}, took {}ms", authenticated, duration);
+        } else {
+            log.debug("Fitbit status check: authenticated={}, took {}ms", authenticated, duration);
+        }
         return ResponseEntity.ok(new AuthStatusResponse(authenticated));
     }
 

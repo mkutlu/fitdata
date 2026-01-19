@@ -185,9 +185,19 @@ export function Dashboard() {
                 if (err instanceof Error && err.name === "AbortError") return;
                 console.error("Auth/Profile fetch failed", err);
                 const errorMessage = err instanceof Error ? err.message : String(err);
-                // Don't show technical error if it's just a missing token
-                if (!errorMessage.includes("401") && !errorMessage.includes("No Fitbit token")) {
-                    setError(errorMessage);
+                
+                // If it's a network error/timeout (not a deliberate 401), we might still be authenticated
+                // but just couldn't reach the server. Let's not reset the whole UI to login screen immediately
+                // unless it's clearly a "not authorized" case.
+                const isAuthError = errorMessage.includes("401") || errorMessage.includes("No Fitbit token") || errorMessage.includes("Unauthorized");
+                
+                if (isAuthError) {
+                    setIsAuthenticated(false);
+                    setLayouts(JSON.parse(JSON.stringify(defaultLayouts)));
+                } else {
+                    // It's likely a timeout or server error. 
+                    // We don't change isAuthenticated, keeping current (probably false) but showing error.
+                    setError("Unable to connect to service. Please check your connection or refresh. " + errorMessage);
                 }
             } finally {
                 setLoading(false);
