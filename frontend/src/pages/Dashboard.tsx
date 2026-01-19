@@ -130,7 +130,6 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
 export function Dashboard() {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [profile, setProfile] = useState<UserProfileDto | null>(null);
-    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     const [selectedDate, setSelectedDate] = useState<string>(() => toIsoDate(new Date()));
@@ -266,15 +265,9 @@ export function Dashboard() {
 
                 <div className="mt-8">
                     {loading && <div className="text-slate-300">Loading profile…</div>}
-
-                    {!loading && error && (
-                        <div className="rounded-2xl border border-red-900/50 bg-red-950/30 p-5 text-red-200">
-                            {error}
-                        </div>
-                    )}
                 </div>
 
-                {!loading && !error && isAuthenticated && profile && (
+                {!loading && isAuthenticated && profile && (
                     <>
                         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center">
                             <div className="order-2 lg:order-1 lg:col-span-6">
