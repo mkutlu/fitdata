@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE_URL = (window as any).ENV?.VITE_API_BASE_URL !== "__VITE_API_BASE_URL__" 
+    ? (window as any).ENV?.VITE_API_BASE_URL 
+    : (import.meta.env.VITE_API_BASE_URL || "");
 
 export async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 2): Promise<Response> {
     const fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;

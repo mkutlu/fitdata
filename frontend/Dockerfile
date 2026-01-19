@@ -10,9 +10,11 @@ RUN npm run build
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
-# Default for local development. Override this in Railway/Production with:
-# http://<service-name>.railway.internal:8080
+# Default for local development
+ENV VITE_API_BASE_URL=""
 ENV BACKEND_URL=http://backend:8080
 ENV PORT=80
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+
+# Use a shell script to replace the placeholder in index.html with the environment variable at runtime
+CMD ["sh", "-c", "sed -i \"s|__VITE_API_BASE_URL__|${VITE_API_BASE_URL}|g\" /usr/share/nginx/html/index.html && nginx -g 'daemon off;'"]
