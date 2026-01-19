@@ -7,7 +7,9 @@ if (API_BASE_URL) {
 }
 
 export async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 2): Promise<Response> {
-    const fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
+    const apiBase = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+    const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+    const fullUrl = url.startsWith("http") ? url : `${apiBase}${cleanUrl}`;
     
     // Safety check: prevent Mixed Content errors if possible
     if (window.location.protocol === "https:" && fullUrl.startsWith("http://")) {
@@ -25,8 +27,9 @@ export async function fetchWithRetry(url: string, options: RequestInit = {}, ret
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     
-    const mergedOptions = {
+    const mergedOptions: RequestInit = {
         ...options,
+        credentials: options.credentials || "include",
         signal: options.signal 
             ? anySignal([options.signal, controller.signal])
             : controller.signal
