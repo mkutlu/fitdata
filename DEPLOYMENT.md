@@ -26,9 +26,15 @@ Each service (Backend and Frontend) requires specific environment variables. You
 **For the Frontend Service:**
 1. Go to the **Variables** tab of your Frontend service.
 2. Add the following variable:
-   - `BACKEND_URL`: `http://backend-service-name.railway.internal:8080`
-   - **Important**: Do NOT include a trailing slash in the URL (e.g., use `...:8080`, not `...:8080/`).
-   - Replace `backend-service-name` with your actual backend service name in Railway.
+   - **BACKEND_URL**: `http://backend-service-name.railway.internal:8080`
+   - **VITE_API_BASE_URL** (Optional): `https://your-backend-public-url.up.railway.app`
+   - **Important Difference**:
+     - `BACKEND_URL` is used **internally** by Nginx (Server-to-Server). It should use the `.internal` HTTP address.
+     - `VITE_API_BASE_URL` is used **by the browser** (Client-to-Server). If your site is HTTPS, this **MUST** be the public HTTPS address. 
+     - **CRITICAL**: Do NOT include a port number like `:8080` in `VITE_API_BASE_URL` if you are using the public Railway HTTPS domain. Standard HTTPS uses port 443, and Railway handles this automatically.
+     - **Incorrect**: `https://backend-production.up.railway.app:8080` (Will timeout)
+     - **Correct**: `https://backend-production.up.railway.app`
+   - If `VITE_API_BASE_URL` is not set, the app will use the Nginx proxy (safer default).
 
 #### Step 4: Deploy Backend
 1. Click **"New"** -> **"GitHub Repo"** -> Select your repo.

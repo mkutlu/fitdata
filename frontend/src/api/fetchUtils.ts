@@ -2,8 +2,23 @@ const API_BASE_URL = (window as any).ENV?.VITE_API_BASE_URL !== "__VITE_API_BASE
     ? (window as any).ENV?.VITE_API_BASE_URL 
     : (import.meta.env.VITE_API_BASE_URL || "");
 
+if (API_BASE_URL) {
+    console.log(`[DEBUG] API_BASE_URL is set to: "${API_BASE_URL}"`);
+}
+
 export async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 2): Promise<Response> {
     const fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
+    
+    // Safety check: prevent Mixed Content errors if possible
+    if (window.location.protocol === "https:" && fullUrl.startsWith("http://")) {
+        console.warn(`Mixed Content Warning: Requesting ${fullUrl} from an HTTPS page will likely be blocked.`);
+    }
+
+    // Safety check: common port error on Railway
+    if (fullUrl.includes(".up.railway.app:8080")) {
+        console.warn(`Connection Warning: You are requesting ${fullUrl}. Public Railway URLs usually don't use port 8080. If this times out, remove :8080 from VITE_API_BASE_URL.`);
+    }
+
     const isStatusCheck = url.includes("/oauth/fitbit/status");
     const timeout = isStatusCheck ? 15000 : 30000; 
     
@@ -21,7 +36,7 @@ export async function fetchWithRetry(url: string, options: RequestInit = {}, ret
         const res = await fetch(fullUrl, mergedOptions);
         clearTimeout(id);
         // Retry on server errors or common proxy timeout errors (408, 499, 502, 504)
-        if (!res.ok && (res.status >= 500 || res.status === 401 || res.status === 408 || res.status === 499 || res.status === 502 || res.status === 504) && retries > 0) {
+        if (!res.ok && (res.status >= 500 || res.status === 408 || res.status === 499 || res.status === 502 || res.status === 504) && retries > 0) {
             console.warn(`Fetch failed with ${res.status} for ${fullUrl}, retrying... (${retries} left)`);
             // Exponential backoff
             const delay = (3 - retries) * 2000;

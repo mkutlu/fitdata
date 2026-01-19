@@ -17,7 +17,7 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http) {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -27,8 +27,8 @@ public class SecurityConfig {
                 .requestCache(org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/.env", "/.git/**", "/wp-login.php", "/admin/**").denyAll()
-                        .requestMatchers("/oauth/fitbit/start", "/oauth/fitbit/callback", "/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/oauth/fitbit/status", "/api/**").authenticated()
+                        .requestMatchers("/oauth/fitbit/start", "/oauth/fitbit/callback", "/oauth/fitbit/status", "/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex
