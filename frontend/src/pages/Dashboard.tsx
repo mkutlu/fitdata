@@ -240,8 +240,8 @@ export function Dashboard() {
 
             <div className="relative mx-auto w-full max-w-[1520px] px-4 sm:px-6 lg:px-10 py-10">
                 <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <img src={logo} alt="Fitdata" className="h-10 w-auto" />
+                    <div className="pl-2.5">
+                        <img src={logo} alt="Fitdata" className="h-14 w-auto" />
                     </div>
 
                     <div className="flex flex-wrap gap-2 items-center">
