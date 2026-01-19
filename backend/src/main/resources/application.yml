@@ -32,6 +32,10 @@ spring:
     caffeine:
       spec: expireAfterWrite=10m,maximumSize=500
 
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: always
 server:
   port: ${PORT:8080}
   servlet:
