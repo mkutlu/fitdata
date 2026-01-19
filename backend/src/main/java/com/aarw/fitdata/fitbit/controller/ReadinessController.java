@@ -12,6 +12,8 @@ import java.time.LocalDate;
 @RestController
 public class ReadinessController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ReadinessController.class);
+
     private final ReadinessCardService readinessCardService;
 
     public ReadinessController(ReadinessCardService readinessCardService) {
@@ -22,7 +24,10 @@ public class ReadinessController {
     public ReadinessCardDto getReadinessCard(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
+        log.info("Readiness request START");
         LocalDate effective = baseDate == null ? LocalDate.now() : baseDate;
-        return readinessCardService.getReadinessCard(effective);
+        var result = readinessCardService.getReadinessCard(effective);
+        log.info("Readiness request END");
+        return result;
     }
 }

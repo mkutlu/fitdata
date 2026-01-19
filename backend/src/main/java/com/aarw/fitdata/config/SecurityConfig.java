@@ -15,11 +15,14 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED))
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED)
+                )
+                .requestCache(org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/.env", "/.git/**", "/wp-login.php", "/admin/**").denyAll()
-                        .requestMatchers("/oauth/fitbit/**", "/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/api/**").authenticated()
+                        .requestMatchers("/oauth/fitbit/start", "/oauth/fitbit/callback", "/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/oauth/fitbit/status", "/api/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex

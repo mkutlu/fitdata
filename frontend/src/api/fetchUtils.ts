@@ -1,6 +1,6 @@
 export async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 2): Promise<Response> {
     const isStatusCheck = url.includes("/oauth/fitbit/status");
-    const timeout = isStatusCheck ? 10000 : 20000; // Reset to reasonable 10s and 20s
+    const timeout = isStatusCheck ? 15000 : 30000; 
     
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
