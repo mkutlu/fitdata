@@ -15,5 +15,5 @@ export async function createSnapshot(params: { selectedDate: string, stepsRange:
     if (!res.ok) {
         throw new Error("Failed to create snapshot");
     }
-    return res.text(); // Returns UUID as plain string
+    return res.json(); // Returns UUID string parsed from JSON
 }

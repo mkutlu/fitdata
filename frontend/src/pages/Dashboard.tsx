@@ -133,6 +133,9 @@ export function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [snapshotData, setSnapshotData] = useState<any>(null);
     const [sharing, setSharing] = useState(false);
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
 
     const [selectedDate, setSelectedDate] = useState<string>(() => toIsoDate(new Date()));
     const readableDate = useMemo(() => formatReadable(selectedDate), [selectedDate]);
@@ -176,7 +179,9 @@ export function Dashboard() {
 
             if (shareId) {
                 try {
-                    const data = await fetchSnapshot(shareId, controller.signal);
+                    // Clean shareId in case it has quotes from a previous buggy version
+                    const cleanShareId = shareId.replace(/['"]+/g, '');
+                    const data = await fetchSnapshot(cleanShareId, controller.signal);
                     setSnapshotData(data);
                     setProfile(data.profile.user);
                     setSelectedDate(data.selectedDate);
@@ -263,16 +268,21 @@ export function Dashboard() {
     const handleShare = async () => {
         if (sharing) return;
         setSharing(true);
+        setCopySuccess(false);
         try {
             const uuid = await createSnapshot({
                 selectedDate,
                 stepsRange: range,
                 weightRange
             });
-            const url = new URL(window.location.href);
+            const url = new URL(window.location.origin);
             url.searchParams.set("share", uuid);
-            await navigator.clipboard.writeText(url.toString());
-            alert("Shareable link copied to clipboard!");
+            const finalUrl = url.toString();
+            setShareUrl(finalUrl);
+            setShowShareModal(true);
+            await navigator.clipboard.writeText(finalUrl);
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
         } catch (e) {
             console.error("Sharing failed", e);
             alert("Failed to create share link.");
@@ -405,6 +415,66 @@ export function Dashboard() {
                     </div>
                 )}
             </div>
+
+            {showShareModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowShareModal(false)} />
+                    <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-slate-100">Share Dashboard</h3>
+                            <button 
+                                onClick={() => setShowShareModal(false)}
+                                className="rounded-full p-1 hover:bg-slate-800 transition-colors text-slate-400"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                        
+                        <p className="text-sm text-slate-400 mb-6">
+                            Anyone with this link can view a snapshot of your dashboard including your readiness, steps, and health metrics.
+                        </p>
+
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <input 
+                                    type="text" 
+                                    readOnly 
+                                    value={shareUrl || ""} 
+                                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 pr-24 text-sm text-slate-200 outline-none focus:border-sky-500/50 transition-colors"
+                                />
+                                <button
+                                    onClick={async () => {
+                                        if (shareUrl) {
+                                            await navigator.clipboard.writeText(shareUrl);
+                                            setCopySuccess(true);
+                                            setTimeout(() => setCopySuccess(false), 2000);
+                                        }
+                                    }}
+                                    className={`absolute right-1.5 top-1.5 bottom-1.5 px-4 rounded-lg text-xs font-bold transition-all ${copySuccess ? 'bg-emerald-500 text-white' : 'bg-sky-500 hover:bg-sky-400 text-white'}`}
+                                >
+                                    {copySuccess ? 'COPIED!' : 'COPY'}
+                                </button>
+                            </div>
+
+                            {copySuccess && (
+                                <div className="flex items-center gap-2 text-emerald-400 text-xs font-medium animate-in slide-in-from-top-1 duration-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Link copied to clipboard successfully!
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-8">
+                            <button
+                                onClick={() => setShowShareModal(false)}
+                                className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-colors"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
