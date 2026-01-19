@@ -42,6 +42,7 @@ server:
         http-only: true
         secure: true
         same-site: none
+        partitioned: true
   forward-headers-strategy: framework
   tomcat:
     threads:

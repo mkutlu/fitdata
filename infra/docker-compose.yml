@@ -20,7 +20,7 @@ services:
     image: redis:7
     container_name: fitbit_redis
     ports:
-      - "6382:6379"
+      - "7382:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - fitbit_redisdata:/data
