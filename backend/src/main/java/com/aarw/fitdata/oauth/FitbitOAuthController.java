@@ -88,9 +88,9 @@ public class FitbitOAuthController {
     }
 
     @GetMapping("/oauth/fitbit/status")
-    public ResponseEntity<AuthStatusResponse> status(HttpSession session) {
-        SecurityContext context = (SecurityContext) session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
-        boolean authenticated = context != null && context.getAuthentication() != null && context.getAuthentication().isAuthenticated();
+    public ResponseEntity<AuthStatusResponse> status() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean authenticated = auth != null && auth.isAuthenticated() && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken);
         return ResponseEntity.ok(new AuthStatusResponse(authenticated));
     }
 

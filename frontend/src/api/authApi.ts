@@ -4,8 +4,8 @@ export type AuthStatus = {
     authenticated: boolean;
 };
 
-export async function fetchAuthStatus(): Promise<AuthStatus> {
-    const res = await fetchWithRetry("/oauth/fitbit/status");
+export async function fetchAuthStatus(signal?: AbortSignal): Promise<AuthStatus> {
+    const res = await fetchWithRetry("/oauth/fitbit/status", { signal });
     if (!res.ok) {
         throw new Error("Failed to fetch auth status");
     }

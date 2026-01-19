@@ -171,7 +171,7 @@ export function Dashboard() {
 
         (async () => {
             try {
-                const auth = await fetchAuthStatus();
+                const auth = await fetchAuthStatus(controller.signal);
                 setIsAuthenticated(auth.authenticated);
 
                 if (auth.authenticated) {
