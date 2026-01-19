@@ -8,10 +8,8 @@ import com.aarw.fitdata.fitbit.FitbitApiClient;
 import com.aarw.fitdata.fitbit.dto.FitbitActivitiesSummaryResponse;
 import com.aarw.fitdata.fitbit.dto.FitbitHrvResponse;
 import com.aarw.fitdata.fitbit.dto.FitbitVo2MaxResponse;
-import com.aarw.fitdata.fitbit.util.ActivityLoad;
-import com.aarw.fitdata.fitbit.util.ReadinessInputs;
 import com.aarw.fitdata.fitbit.util.ReadinessScoreEstimator;
-import com.aarw.fitdata.fitbit.util.SleepTrend;
+import com.aarw.fitdata.fitbit.util.StepsRange;
 import com.aarw.fitdata.oauth.token.FitbitTokenService;
 import org.springframework.stereotype.Service;
 
@@ -147,7 +145,7 @@ public class ReadinessCardService {
                         return new HeartRateDayDto(date, null, null);
                     });
             CompletableFuture<HeartRateRangeDto> last7DaysHrFuture = CompletableFuture.supplyAsync(() ->
-                    heartRateService.getRange(com.aarw.fitdata.fitbit.util.StepsRange.LAST_7_DAYS, date))
+                    heartRateService.getRange(StepsRange.LAST_7_DAYS, date))
                     .exceptionally(e -> {
                         log.error("Error fetching 7-day HR range for {}: {}", date, e.getMessage());
                         return new HeartRateRangeDto("LAST_7_DAYS", date.minusDays(7), date, List.of());
@@ -209,24 +207,24 @@ public class ReadinessCardService {
             // 2. Sleep Trend
             SleepDto sleep = sleepFuture.join();
             Integer sleepScore = sleep.sleepScore();
-            SleepTrend sleepTrend = null;
+            ReadinessScoreEstimator.SleepTrend sleepTrend = null;
             if (sleepScore != null) {
-                if (sleepScore >= 80) sleepTrend = SleepTrend.EXCELLENT;
-                else if (sleepScore >= 70) sleepTrend = SleepTrend.GOOD;
-                else if (sleepScore >= 60) sleepTrend = SleepTrend.FAIR;
-                else sleepTrend = SleepTrend.POOR;
+                if (sleepScore >= 80) sleepTrend = ReadinessScoreEstimator.SleepTrend.EXCELLENT;
+                else if (sleepScore >= 70) sleepTrend = ReadinessScoreEstimator.SleepTrend.GOOD;
+                else if (sleepScore >= 60) sleepTrend = ReadinessScoreEstimator.SleepTrend.FAIR;
+                else sleepTrend = ReadinessScoreEstimator.SleepTrend.POOR;
             }
 
             // 3. Activity Load
             FitbitActivitiesSummaryResponse activity = activityFuture.join();
             int activeCals = (activity != null && activity.summary() != null && activity.summary().activityCalories() != null) 
                     ? activity.summary().activityCalories() : 0;
-            ActivityLoad activityLoad = ActivityLoad.REST;
+            ReadinessScoreEstimator.ActivityLoad activityLoad = ReadinessScoreEstimator.ActivityLoad.REST;
 
-            if (activeCals > 1500) activityLoad = ActivityLoad.VERY_HIGH;
-            else if (activeCals > 1000) activityLoad = ActivityLoad.HIGH;
-            else if (activeCals > 500) activityLoad = ActivityLoad.MODERATE;
-            else if (activeCals > 200) activityLoad = ActivityLoad.LOW;
+            if (activeCals > 1500) activityLoad = ReadinessScoreEstimator.ActivityLoad.VERY_HIGH;
+            else if (activeCals > 1000) activityLoad = ReadinessScoreEstimator.ActivityLoad.HIGH;
+            else if (activeCals > 500) activityLoad = ReadinessScoreEstimator.ActivityLoad.MODERATE;
+            else if (activeCals > 200) activityLoad = ReadinessScoreEstimator.ActivityLoad.LOW;
 
             // 4. HRV
             FitbitHrvResponse hrvToday = hrvTodayFuture.join();
@@ -264,7 +262,7 @@ public class ReadinessCardService {
 
             double hrvPercentChange = ((todayHrvValue - avgHrv) / Math.max(1.0, avgHrv)) * 100.0;
 
-            ReadinessInputs inputs = new ReadinessInputs(hrvPercentChange, rhrDelta, sleepTrend, activityLoad);
+            ReadinessScoreEstimator.ReadinessInputs inputs = new ReadinessScoreEstimator.ReadinessInputs(hrvPercentChange, rhrDelta, sleepTrend, activityLoad);
             Integer score = ReadinessScoreEstimator.estimate(inputs);
             log.debug("Readiness score estimated for {}: {}", date, score);
             return score;
