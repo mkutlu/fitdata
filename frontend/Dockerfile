@@ -17,4 +17,4 @@ ENV PORT=80
 EXPOSE 80
 
 # Use a shell script to replace the placeholder in index.html with the environment variable at runtime
-CMD ["sh", "-c", "sed -i \"s|__VITE_API_BASE_URL__|${VITE_API_BASE_URL}|g\" /usr/share/nginx/html/index.html && nginx -g 'daemon off;'"]
+CMD ["sh", "-c", "sed -i \"s|__VITE_API_BASE_URL__|${VITE_API_BASE_URL}|g\" /usr/share/nginx/html/index.html && (envsubst '${PORT} ${BACKEND_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf) && nginx -g 'daemon off;'"]
