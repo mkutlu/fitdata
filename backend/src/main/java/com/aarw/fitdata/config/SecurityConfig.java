@@ -29,7 +29,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/.env", "/.git/**", "/wp-login.php", "/admin/**").denyAll()
-                        .requestMatchers("/oauth/fitbit/start", "/oauth/fitbit/callback", "/oauth/fitbit/status", "/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/oauth/fitbit/start", "/oauth/fitbit/callback", "/oauth/fitbit/status", "/api/snapshots/*", "/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 )

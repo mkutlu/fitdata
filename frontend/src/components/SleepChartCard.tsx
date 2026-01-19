@@ -12,6 +12,7 @@ import { fetchSleep, type SleepDto } from "../api/sleepApi";
 
 type Props = {
     baseDate: string;
+    initialData?: SleepDto;
 };
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -43,12 +44,17 @@ const LEVEL_MAP: Record<string, string> = {
     deep: "deep"
 };
 
-export function SleepChartCard({ baseDate }: Props) {
-    const [data, setData] = useState<SleepDto | null>(null);
+export function SleepChartCard({ baseDate, initialData }: Props) {
+    const [data, setData] = useState<SleepDto | null>(initialData || null);
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialData);
 
     useEffect(() => {
+        if (initialData) {
+            setData(initialData);
+            setLoading(false);
+            return;
+        }
         const controller = new AbortController();
         setLoading(true);
         setError(null);

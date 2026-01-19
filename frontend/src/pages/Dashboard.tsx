@@ -9,7 +9,7 @@ import { ReadinessCard } from "../components/ReadinessCard";
 import { fetchProfile, type UserProfileDto } from "../api/profileApi";
 import { fetchAuthStatus, logout } from "../api/authApi";
 import type { StepsRange } from "../api/stepsApi";
-// import {LiveWorkoutCard} from "../components/LiveWorkoutCard.tsx";
+import { createSnapshot, fetchSnapshot } from "../api/snapshotApi";
 import logo from "../assets/fitdata-logo.png";
 
 const LAYOUT_STORAGE_KEY = "fitdata-dashboard-layout";
@@ -41,7 +41,7 @@ const defaultLayouts: any = {
     ],
 };
 
-function DashboardContent({selectedDate, range, setRange, weightRange, setWeightRange, layouts, onLayoutChange }: any) {
+function DashboardContent({selectedDate, range, setRange, weightRange, setWeightRange, layouts, onLayoutChange, snapshotData }: any) {
     const { containerRef, width } = useContainerWidth();
     const [mounted, setMounted] = useState(false);
 
@@ -67,7 +67,7 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
                                 <div className="w-8 h-1 bg-slate-700 rounded-full" />
                             </div>
                             <div className="flex-1 overflow-hidden">
-                                <ReadinessCard baseDate={selectedDate} />
+                                <ReadinessCard baseDate={selectedDate} initialData={snapshotData?.readiness} />
                             </div>
                         </div>
                     </div>
@@ -77,7 +77,7 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
                                 <div className="w-8 h-1 bg-slate-700 rounded-full" />
                             </div>
                             <div className="flex-1 overflow-hidden">
-                                <StepsChartCard baseDate={selectedDate} range={range} onRangeChange={setRange} />
+                                <StepsChartCard baseDate={selectedDate} range={range} onRangeChange={setRange} initialData={snapshotData?.steps} />
                             </div>
                         </div>
                     </div>
@@ -87,7 +87,7 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
                                 <div className="w-8 h-1 bg-slate-700 rounded-full" />
                             </div>
                             <div className="flex-1 overflow-hidden">
-                                <WeightChartCard baseDate={selectedDate} range={weightRange} onRangeChange={setWeightRange} />
+                                <WeightChartCard baseDate={selectedDate} range={weightRange} onRangeChange={setWeightRange} initialData={snapshotData?.weight} />
                             </div>
                         </div>
                     </div>
@@ -97,7 +97,7 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
                                 <div className="w-8 h-1 bg-slate-700 rounded-full" />
                             </div>
                             <div className="flex-1 overflow-hidden">
-                                <HeartRateIntradayCard baseDate={selectedDate} />
+                                <HeartRateIntradayCard baseDate={selectedDate} initialData={snapshotData?.heartRate} />
                             </div>
                         </div>
                     </div>
@@ -107,7 +107,7 @@ function DashboardContent({selectedDate, range, setRange, weightRange, setWeight
                                 <div className="w-8 h-1 bg-slate-700 rounded-full" />
                             </div>
                             <div className="flex-1 overflow-hidden">
-                                <SleepChartCard baseDate={selectedDate} />
+                                <SleepChartCard baseDate={selectedDate} initialData={snapshotData?.sleep} />
                             </div>
                         </div>
                     </div>
@@ -131,6 +131,8 @@ export function Dashboard() {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [profile, setProfile] = useState<UserProfileDto | null>(null);
     const [loading, setLoading] = useState(true);
+    const [snapshotData, setSnapshotData] = useState<any>(null);
+    const [sharing, setSharing] = useState(false);
 
     const [selectedDate, setSelectedDate] = useState<string>(() => toIsoDate(new Date()));
     const readableDate = useMemo(() => formatReadable(selectedDate), [selectedDate]);
@@ -169,6 +171,26 @@ export function Dashboard() {
         const controller = new AbortController();
 
         (async () => {
+            const params = new URLSearchParams(window.location.search);
+            const shareId = params.get("share");
+
+            if (shareId) {
+                try {
+                    const data = await fetchSnapshot(shareId, controller.signal);
+                    setSnapshotData(data);
+                    setProfile(data.profile.user);
+                    setSelectedDate(data.selectedDate);
+                    setRange(data.stepsRange);
+                    setWeightRange(data.weightRange);
+                    setIsAuthenticated(true); // Treat as authenticated for layout purposes
+                    setLoading(false);
+                    return;
+                } catch (e) {
+                    console.error("Failed to fetch snapshot", e);
+                    // Fallback to normal auth check
+                }
+            }
+
             try {
                 const auth = await fetchAuthStatus(controller.signal);
                 setIsAuthenticated(auth.authenticated);
@@ -222,8 +244,13 @@ export function Dashboard() {
             await logout();
             setIsAuthenticated(false);
             setProfile(null);
+            setSnapshotData(null);
             // Reset layouts to default on logout
             setLayouts(JSON.parse(JSON.stringify(defaultLayouts)));
+            // Remove share param if present
+            const url = new URL(window.location.href);
+            url.searchParams.delete("share");
+            window.history.replaceState({}, "", url.toString());
         } catch (e) {
             console.error("Logout failed", e);
         }
@@ -231,6 +258,27 @@ export function Dashboard() {
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleShare = async () => {
+        if (sharing) return;
+        setSharing(true);
+        try {
+            const uuid = await createSnapshot({
+                selectedDate,
+                stepsRange: range,
+                weightRange
+            });
+            const url = new URL(window.location.href);
+            url.searchParams.set("share", uuid);
+            await navigator.clipboard.writeText(url.toString());
+            alert("Shareable link copied to clipboard!");
+        } catch (e) {
+            console.error("Sharing failed", e);
+            alert("Failed to create share link.");
+        } finally {
+            setSharing(false);
+        }
     };
 
     return (
@@ -246,27 +294,41 @@ export function Dashboard() {
 
                     <div className="flex flex-wrap gap-2 items-center">
                         {isAuthenticated && (
-                            <button
-                                onClick={handlePrint}
-                                title="Print Dashboard"
-                                className="mr-1 rounded-xl border border-slate-800 bg-slate-900/50 p-2 text-slate-300 hover:bg-slate-800 hover:text-sky-400 transition-all no-print"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                                    <rect x="6" y="14" width="12" height="8"></rect>
-                                </svg>
-                            </button>
+                            <div className="flex gap-2 mr-2 no-print">
+                                <button
+                                    onClick={handleShare}
+                                    disabled={sharing || !!snapshotData}
+                                    title={!!snapshotData ? "Snapshot view" : "Share Snapshot"}
+                                    className={`rounded-xl border border-slate-800 bg-slate-900/50 p-2 text-slate-300 transition-all ${!!snapshotData ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-800 hover:text-emerald-400'}`}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                                        <polyline points="16 6 12 2 8 6"></polyline>
+                                        <line x1="12" y1="2" x2="12" y2="15"></line>
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={handlePrint}
+                                    title="Print Dashboard"
+                                    className="rounded-xl border border-slate-800 bg-slate-900/50 p-2 text-slate-300 hover:bg-slate-800 hover:text-sky-400 transition-all"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                        <rect x="6" y="14" width="12" height="8"></rect>
+                                    </svg>
+                                </button>
+                            </div>
                         )}
-                        <HeaderChip label="Data source" value="Fitbit" />
-                        <HeaderChip label="View" value="Overview" />
+                        <HeaderChip label="Data source" value={snapshotData ? "Snapshot" : "Fitbit"} />
+                        <HeaderChip label="View" value={snapshotData ? "Historical" : "Overview"} />
                         {!loading && (
                             isAuthenticated ? (
                                 <button
                                     onClick={handleLogout}
                                     className="ml-2 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors"
                                 >
-                                    Logout
+                                    {snapshotData ? "Exit Snapshot" : "Logout"}
                                 </button>
                             ) : (
                                 <button
@@ -282,13 +344,30 @@ export function Dashboard() {
 
                 <div className="mt-8">
                     {loading && <div className="text-slate-300">Loading profile…</div>}
+                    {snapshotData && (
+                        <div className="mb-4 inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 text-emerald-400 text-sm no-print">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            You are viewing a shared snapshot from {new Date(snapshotData.selectedDate).toLocaleDateString()}.
+                        </div>
+                    )}
                 </div>
 
                 {!loading && isAuthenticated && profile && (
                     <>
                         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center no-print">
                             <div className="order-2 lg:order-1 lg:col-span-6">
-                                <DateBarCompact selectedDate={selectedDate} readableDate={readableDate} onChange={setSelectedDate} />
+                                {snapshotData ? (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/40 px-6 py-4">
+                                        <div className="text-xs text-slate-400 uppercase tracking-widest font-semibold">Snapshot Date</div>
+                                        <div className="mt-1 text-xl font-bold text-slate-100">{readableDate}</div>
+                                    </div>
+                                ) : (
+                                    <DateBarCompact selectedDate={selectedDate} readableDate={readableDate} onChange={setSelectedDate} />
+                                )}
                             </div>
 
                             <div className="order-1 lg:order-2 lg:col-span-6">
@@ -304,6 +383,7 @@ export function Dashboard() {
                             setWeightRange={setWeightRange}
                             layouts={layouts}
                             onLayoutChange={onLayoutChange}
+                            snapshotData={snapshotData}
                         />
                     </>
                 )}

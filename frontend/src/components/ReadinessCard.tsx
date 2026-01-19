@@ -3,14 +3,21 @@ import { fetchReadiness, type ReadinessCardDto } from "../api/readinessApi";
 
 type Props = {
     baseDate: string;
+    initialData?: ReadinessCardDto;
 };
 
-export function ReadinessCard({ baseDate }: Props) {
-    const [data, setData] = useState<ReadinessCardDto | null>(null);
-    const [loading, setLoading] = useState(true);
+export function ReadinessCard({ baseDate, initialData }: Props) {
+    const [data, setData] = useState<ReadinessCardDto | null>(initialData || null);
+    const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        if (initialData) {
+            setData(initialData);
+            setLoading(false);
+            return;
+        }
+
         const controller = new AbortController();
         setLoading(true);
         setError(null);

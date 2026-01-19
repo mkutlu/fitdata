@@ -17,15 +17,21 @@ import { fetchHeartRateIntraday, type HeartRateIntradayDto } from "../api/heartr
 
 type Props = {
     baseDate: string;
+    initialData?: HeartRateIntradayDto;
 };
 
-export function HeartRateIntradayCard({ baseDate }: Props) {
-    const [data, setData] = useState<HeartRateIntradayDto | null>(null);
+export function HeartRateIntradayCard({ baseDate, initialData }: Props) {
+    const [data, setData] = useState<HeartRateIntradayDto | null>(initialData || null);
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialData);
     const [view, setView] = useState<"chart" | "zones">("chart");
 
     useEffect(() => {
+        if (initialData) {
+            setData(initialData);
+            setLoading(false);
+            return;
+        }
         const controller = new AbortController();
         setLoading(true);
         setError(null);

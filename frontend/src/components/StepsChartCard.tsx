@@ -21,14 +21,20 @@ type Props = {
     baseDate: string;
     range: StepsRange;
     onRangeChange: (next: StepsRange) => void;
+    initialData?: StepsSeriesDto;
 };
 
-export function StepsChartCard({ baseDate, range, onRangeChange }: Props) {
-    const [data, setData] = useState<StepsSeriesDto | null>(null);
+export function StepsChartCard({ baseDate, range, onRangeChange, initialData }: Props) {
+    const [data, setData] = useState<StepsSeriesDto | null>(initialData || null);
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialData);
 
     useEffect(() => {
+        if (initialData) {
+            setData(initialData);
+            setLoading(false);
+            return;
+        }
         const controller = new AbortController();
         setLoading(true);
         setError(null);

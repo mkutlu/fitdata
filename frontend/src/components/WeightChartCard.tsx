@@ -22,14 +22,20 @@ type Props = {
     baseDate: string;
     range: StepsRange;
     onRangeChange: (next: StepsRange) => void;
+    initialData?: WeightSeriesDto;
 };
 
-export function WeightChartCard({ baseDate, range, onRangeChange }: Props) {
-    const [data, setData] = useState<WeightSeriesDto | null>(null);
+export function WeightChartCard({ baseDate, range, onRangeChange, initialData }: Props) {
+    const [data, setData] = useState<WeightSeriesDto | null>(initialData || null);
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialData);
 
     useEffect(() => {
+        if (initialData) {
+            setData(initialData);
+            setLoading(false);
+            return;
+        }
         const controller = new AbortController();
         setLoading(true);
         setError(null);
